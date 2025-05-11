@@ -1,12 +1,6 @@
 import { WebSocketServer } from "ws";
-import {
-  decodeMessage,
-  encodeMessage,
-  getResponse,
-  messageType,
-  requestType,
-  responseType,
-} from "./util";
+import { decodeMessage, encodeMessage } from "./util";
+import { RequestType, ResponseType } from "./types";
 
 export class SignalingServer {
   #wss;
@@ -18,7 +12,7 @@ export class SignalingServer {
   }
 
   static async start() {
-    const started = new Promise((resolve, reject) => {
+    const started = new Promise<SignalingServer>((resolve, reject) => {
       const wss = new WebSocketServer({ port: 9000 });
       const signalingServer = new SignalingServer(wss);
       wss.on("listening", () => {
@@ -36,7 +30,7 @@ export class SignalingServer {
       wss.on("connection", (socket, req) => {
         console.log("connection", req.socket.remoteAddress);
 
-        console.log("clients", wss.clients.size);
+        console.log("clients", wss.clients?.size);
 
         socket.on("error", (error) => console.error(error));
 
@@ -45,18 +39,18 @@ export class SignalingServer {
           console.log("response", request);
 
           let response;
-          if (request.type === requestType.announce) {
+          if (request.type === RequestType.Announce) {
             signalingServer.#agents.set(request.agent.id, socket);
             response = encodeMessage({
-              type: responseType.announce,
+              type: ResponseType.Announce,
               result: null,
             });
-          } else if (request.type === requestType.getAllAgents) {
+          } else if (request.type === RequestType.GetAllAgents) {
             const agents = Array.from(signalingServer.#agents.keys()).map(
               (id) => ({ id })
             );
             response = encodeMessage({
-              type: responseType.getAllAgents,
+              type: ResponseType.GetAllAgents,
               agents,
             });
           } else {

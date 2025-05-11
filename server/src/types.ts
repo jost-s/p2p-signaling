@@ -1,27 +1,35 @@
-import { requestType, responseType } from "./util";
-
 export type AgentId = string;
 
 export interface Agent {
   id: AgentId;
 }
 
+export enum RequestType {
+  Announce = "request_announce",
+  GetAllAgents = "request_get_all_agents",
+}
+
+export enum ResponseType {
+  Announce = "response_announce",
+  GetAllAgents = "response_get_all_agents",
+}
+
 export interface RequestAnnounce {
-  type: typeof requestType.announce;
+  type: RequestType.Announce;
   agent: Agent;
 }
 
 export interface RequestGetAllAgents {
-  type: typeof requestType.getAllAgents;
+  type: RequestType.GetAllAgents;
 }
 
 export interface ResponseAnnounce {
-  type: typeof responseType.announce;
+  type: ResponseType.Announce;
   result: null | Error;
 }
 
 export interface ResponseGetAllAgents {
-  type: typeof responseType.getAllAgents;
+  type: ResponseType.GetAllAgents;
   agents: Agent[];
 }
 
