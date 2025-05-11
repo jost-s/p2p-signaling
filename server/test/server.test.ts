@@ -13,11 +13,13 @@ import {
   ResponseType,
 } from "../src/types.js";
 
+const TEST_URL = new URL("ws://localhost:9000");
+
 test("Server startup and shutdown", async () => {
-  const server = await SignalingServer.start();
+  const server = await SignalingServer.start(TEST_URL);
 
   const connected = new Promise<void>((resolve) => {
-    const ws = new WebSocket(new URL("ws://localhost:9000"));
+    const ws = new WebSocket(TEST_URL);
     ws.on("error", (error) => assert.fail());
     ws.on("open", () => {
       resolve();
@@ -28,7 +30,7 @@ test("Server startup and shutdown", async () => {
   server.close();
 
   const closed = new Promise<void>((resolve) => {
-    const ws = new WebSocket(new URL("ws://localhost:9000"));
+    const ws = new WebSocket(TEST_URL);
     ws.on("error", () => resolve());
     ws.on("open", () => assert.fail());
   });
@@ -36,10 +38,10 @@ test("Server startup and shutdown", async () => {
 });
 
 test("Agent can announce", async () => {
-  const server = await SignalingServer.start();
+  const server = await SignalingServer.start(TEST_URL);
 
   const connected = new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(new URL("ws://localhost:9000"));
+    const ws = new WebSocket(TEST_URL);
     ws.on("open", () => {
       resolve(ws);
     });
@@ -66,14 +68,15 @@ test("Agent can announce", async () => {
 
   await respondedWithSuccess;
 
+  ws.close();
   server.close();
 });
 
 test("Get all peers", async () => {
-  const server = await SignalingServer.start();
+  const server = await SignalingServer.start(TEST_URL);
 
   const connected = new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(new URL("ws://localhost:9000"));
+    const ws = new WebSocket(TEST_URL);
     ws.on("open", () => {
       resolve(ws);
     });
@@ -113,6 +116,7 @@ test("Get all peers", async () => {
   console.log("agents", agents);
   assert.deepEqual(agents, [{ id: agent1Id }]);
 
+  ws.close();
   server.close();
 });
 
