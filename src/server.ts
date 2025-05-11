@@ -1,24 +1,24 @@
-import WebSocket, { WebSocketServer } from "ws";
-import { RequestType, ResponseType } from "./types";
-import { decodeMessage, encodeMessage } from "./util";
 import { IncomingMessage } from "http";
+import WebSocket, { WebSocketServer } from "ws";
+import { AgentId, RequestType, ResponseType } from "./types.js";
+import { decodeMessage, encodeMessage } from "./util.js";
 
 export class SignalingServer {
-  #wss;
-  #agents;
+  private readonly wss: WebSocketServer;
+  private agents: Map<AgentId, WebSocket>;
 
-  private constructor(wss) {
-    this.#wss = wss;
-    this.#agents = new Map();
+  private constructor(wss: WebSocketServer) {
+    this.wss = wss;
+    this.agents = new Map();
 
     this.registerConnectionListener();
   }
 
   private registerConnectionListener() {
-    this.#wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
+    this.wss.on("connection", (socket: WebSocket, req: IncomingMessage) => {
       console.log("Incoming connection from", req.socket.remoteAddress);
 
-      console.log("Connected clients:", this.#wss.clients?.size);
+      console.log("Connected clients:", this.wss.clients?.size);
 
       socket.on("error", (error) => console.error(error));
 
@@ -28,13 +28,13 @@ export class SignalingServer {
 
         let response;
         if (request.type === RequestType.Announce) {
-          this.#agents.set(request.agent.id, socket);
+          this.agents.set(request.agent.id, socket);
           response = encodeMessage({
             type: ResponseType.Announce,
             result: null,
           });
         } else if (request.type === RequestType.GetAllAgents) {
-          const agents = Array.from(this.#agents.keys()).map((id) => ({ id }));
+          const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
           response = encodeMessage({
             type: ResponseType.GetAllAgents,
             agents,
@@ -62,13 +62,18 @@ export class SignalingServer {
         console.error(error);
         reject(error);
       });
-      wss.once("close", () => {
-        console.log("Signaling server closed.");
-      });
     });
   }
 
-  close() {
-    this.#wss.close();
+  async close() {
+    return new Promise<void>((resolve) => {
+      this.wss.once("close", () => {
+        console.log("Signaling server closed");
+        resolve();
+      });
+      console.log("Closing all client connections");
+      this.wss.clients.forEach((client) => client.close());
+      this.wss.close();
+    });
   }
 }

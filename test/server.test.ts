@@ -18,23 +18,19 @@ const TEST_URL = new URL("ws://localhost:9000");
 test("Server startup and shutdown", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const connected = new Promise<void>((resolve) => {
+  await new Promise<void>((resolve) => {
     const ws = new WebSocket(TEST_URL);
-    ws.on("error", (error) => assert.fail());
-    ws.on("open", () => {
-      resolve();
-    });
+    ws.on("error", () => assert.fail());
+    ws.on("open", () => resolve());
   });
-  await connected;
 
-  server.close();
+  await server.close();
 
-  const closed = new Promise<void>((resolve) => {
+  await new Promise<void>((resolve) => {
     const ws = new WebSocket(TEST_URL);
     ws.on("error", () => resolve());
     ws.on("open", () => assert.fail());
   });
-  await closed;
 });
 
 test("Agent can announce", async () => {
@@ -69,7 +65,7 @@ test("Agent can announce", async () => {
   await respondedWithSuccess;
 
   ws.close();
-  server.close();
+  await server.close();
 });
 
 test("Get all peers", async () => {
@@ -117,7 +113,7 @@ test("Get all peers", async () => {
   assert.deepEqual(agents, [{ id: agent1Id }]);
 
   ws.close();
-  server.close();
+  await server.close();
 });
 
 // test("RTC offer is forwarded to target", async () => {

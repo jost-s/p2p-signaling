@@ -6,8 +6,8 @@ import {
   RequestType,
   Response,
   ResponseType,
-} from "./types";
-import { decodeMessage, encodeMessage } from "./util";
+} from "./types.js";
+import { decodeMessage, encodeMessage } from "./util.js";
 
 export class SignalingClient {
   private readonly webSocket: WebSocket;
@@ -37,18 +37,14 @@ export class SignalingClient {
       webSocket.addEventListener("error", connectionErrorHandler, {
         once: true,
       });
-      webSocket.addEventListener(
-        "close",
-        (event) => {
-          console.log("Signaling client closed:", event.code, event.reason);
-        },
-        { once: true }
-      );
     });
   }
 
   private request(request: Request) {
     return new Promise<Response>((resolve, reject) => {
+      if (this.webSocket.readyState !== this.webSocket.OPEN) {
+        return reject("WebSocket not open");
+      }
       const requestErrorHandler = (event: Event) => {
         console.log("Error sending request:", event);
         reject(event);
@@ -88,7 +84,17 @@ export class SignalingClient {
     }
   }
 
-  close() {
-    this.webSocket.close();
+  async close() {
+    return new Promise<void>((resolve) => {
+      this.webSocket.addEventListener(
+        "close",
+        (event) => {
+          console.log("Signaling client closed:", event.code, event.reason);
+          resolve();
+        },
+        { once: true }
+      );
+      this.webSocket.close();
+    });
   }
 }

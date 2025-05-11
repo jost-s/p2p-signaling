@@ -6,6 +6,31 @@ import { Agent } from "../src/types";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
+test("Client connection error is handled", async () => {
+  try {
+    await SignalingClient.connect(new URL("ws://localhost:1000"));
+    assert.fail("Connection should have failed");
+  } catch (error) {
+    // passed
+  }
+});
+
+test("Client connection can be closed", async () => {
+  const signalingServer = await SignalingServer.start(TEST_URL);
+  const signalingClient = await SignalingClient.connect(TEST_URL);
+
+  await signalingClient.close();
+
+  try {
+    await signalingClient.announce({ id: "false" });
+    assert.fail("Signaling client should be closed");
+  } catch (error) {
+    // passed
+  }
+
+  signalingServer.close();
+});
+
 test("Client can announce", async () => {
   const signalingServer = await SignalingServer.start(TEST_URL);
   const signalingClient = await SignalingClient.connect(TEST_URL);
