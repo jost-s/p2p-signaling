@@ -70,7 +70,9 @@ export class SignalingClient {
     if (response.type === ResponseType.Announce) {
       return Promise.resolve(response.result);
     } else {
-      return Promise.reject("Received unexpected response");
+      return Promise.reject(
+        `Received unexpected response: ${JSON.stringify(response, null, 4)}`
+      );
     }
   }
 
