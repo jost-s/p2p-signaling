@@ -1,19 +1,28 @@
 import {
   Agent,
   Request,
-  RequestAnnounce,
-  RequestGetAllAgents,
   RequestType,
   Response,
   ResponseType,
 } from "./types.js";
-import { decodeMessage, encodeMessage } from "./util.js";
+import { assertIsResponse, decodeMessage, encodeMessage } from "./util.js";
+
+type RequestResolveFn = (value: Response) => void;
+type RequestRejectFn = (reason?: any) => void;
 
 export class SignalingClient {
   private readonly webSocket: WebSocket;
+  private requestIndex: number;
+  private readonly requests: Map<
+    number,
+    { resolve: RequestResolveFn; reject: RequestRejectFn }
+  >;
 
   private constructor(ws: WebSocket) {
     this.webSocket = ws;
+    this.webSocket.addEventListener("message", this.messageListener);
+    this.requestIndex = 0;
+    this.requests = new Map();
   }
 
   static async connect(url: URL) {
@@ -40,35 +49,46 @@ export class SignalingClient {
     });
   }
 
+  private messageListener = (event: MessageEvent) => {
+    const response = decodeMessage(event.data);
+    assertIsResponse(response);
+    console.log("Incoming response", response);
+    const pendingRequest = this.requests.get(response.id);
+    if (pendingRequest) {
+      pendingRequest.resolve(response);
+      this.requests.delete(response.id);
+    } else {
+      console.error(
+        `Received response to an unknown request: ${JSON.stringify(
+          response,
+          null,
+          4
+        )}`
+      );
+    }
+  };
+
   private request(request: Request) {
     return new Promise<Response>((resolve, reject) => {
       if (this.webSocket.readyState !== this.webSocket.OPEN) {
         return reject("WebSocket not open");
       }
-      const requestErrorHandler = (event: Event) => {
-        console.log("Error sending request:", event);
-        reject(event);
-      };
-      this.webSocket.addEventListener(
-        "message",
-        (event) => {
-          this.webSocket.removeEventListener("error", requestErrorHandler);
-          const response = decodeMessage(event.data);
-          console.log("Incoming response", response);
-          resolve(response);
-        },
-        { once: true }
-      );
-      this.webSocket.addEventListener("error", requestErrorHandler);
+
       this.webSocket.send(encodeMessage(request));
+      this.requests.set(request.id, { resolve, reject });
     });
   }
 
   async announce(agent: Agent) {
-    const request: RequestAnnounce = { type: RequestType.Announce, agent };
+    const request: Request = {
+      id: this.requestIndex,
+      type: RequestType.Announce,
+      data: agent,
+    };
+    this.requestIndex++;
     const response = await this.request(request);
-    if (response.type === ResponseType.Announce) {
-      return Promise.resolve(response.result);
+    if (response.type === ResponseType.Announce && response.data === null) {
+      return Promise.resolve(response.data);
     } else {
       return Promise.reject(
         `Received unexpected response: ${JSON.stringify(response, null, 4)}`
@@ -77,10 +97,18 @@ export class SignalingClient {
   }
 
   async getAllAgents() {
-    const request: RequestGetAllAgents = { type: RequestType.GetAllAgents };
+    const request: Request = {
+      id: this.requestIndex,
+      type: RequestType.GetAllAgents,
+      data: undefined,
+    };
+    this.requestIndex++;
     const response = await this.request(request);
-    if (response.type === ResponseType.GetAllAgents) {
-      return Promise.resolve(response.agents);
+    if (
+      response.type === ResponseType.GetAllAgents &&
+      Array.isArray(response.data)
+    ) {
+      return Promise.resolve(response.data);
     } else {
       return Promise.reject("Received unexpected response");
     }

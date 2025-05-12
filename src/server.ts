@@ -1,7 +1,8 @@
 import { IncomingMessage } from "http";
-import WebSocket, { WebSocketServer } from "ws";
+import { WebSocketServer } from "ws";
+import type WebSocket from "ws";
 import { AgentId, RequestType, ResponseType } from "./types.js";
-import { decodeMessage, encodeMessage } from "./util.js";
+import { assertIsRequest, decodeMessage, encodeMessage } from "./util.js";
 
 export class SignalingServer {
   private readonly wss: WebSocketServer;
@@ -24,20 +25,26 @@ export class SignalingServer {
 
       socket.on("message", (data) => {
         const request = decodeMessage(data);
+        assertIsRequest(request);
         console.log("Incoming request", request);
 
         let response;
-        if (request.type === RequestType.Announce) {
-          this.agents.set(request.agent.id, socket);
+        if (
+          request.type === RequestType.Announce &&
+          typeof request.data === "object"
+        ) {
+          this.agents.set(request.data.id, socket);
           response = encodeMessage({
+            id: request.id,
             type: ResponseType.Announce,
-            result: null,
+            data: null,
           });
         } else if (request.type === RequestType.GetAllAgents) {
           const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
           response = encodeMessage({
+            id: request.id,
             type: ResponseType.GetAllAgents,
-            agents,
+            data: agents,
           });
         } else {
           return;

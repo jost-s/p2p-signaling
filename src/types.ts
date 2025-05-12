@@ -9,30 +9,27 @@ export enum RequestType {
   GetAllAgents = "request_get_all_agents",
 }
 
+export type RequestAnnounce = Agent;
+
+export type RequestGetAllAgents = void;
+
+export interface Request {
+  id: number;
+  type: RequestType;
+  data: RequestAnnounce | RequestGetAllAgents;
+}
+
 export enum ResponseType {
   Announce = "response_announce",
   GetAllAgents = "response_get_all_agents",
 }
 
-export interface RequestAnnounce {
-  type: RequestType.Announce;
-  agent: Agent;
+export type ResponseAnnounce = null | Error;
+
+export type ResponseGetAllAgents = Agent[];
+
+export interface Response {
+  id: number;
+  type: ResponseType;
+  data: ResponseAnnounce | ResponseGetAllAgents;
 }
-
-export interface RequestGetAllAgents {
-  type: RequestType.GetAllAgents;
-}
-
-export interface ResponseAnnounce {
-  type: ResponseType.Announce;
-  result: null | Error;
-}
-
-export interface ResponseGetAllAgents {
-  type: ResponseType.GetAllAgents;
-  agents: Agent[];
-}
-
-export type Request = RequestAnnounce | RequestGetAllAgents;
-
-export type Response = ResponseAnnounce | ResponseGetAllAgents;

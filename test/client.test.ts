@@ -47,3 +47,21 @@ test("Client can announce", async () => {
   signalingClient.close();
   signalingServer.close();
 });
+
+test("Client can send two requests in parallel", async () => {
+  const signalingServer = await SignalingServer.start(TEST_URL);
+  const signalingClient = await SignalingClient.connect(TEST_URL);
+
+  const agent: Agent = { id: "peterhahne" };
+  const [announceResponse, getAllAgentsResponse] = await Promise.all([
+    signalingClient.announce(agent),
+    signalingClient.getAllAgents(),
+  ]);
+  assert.equal(announceResponse, null);
+  assert(
+    getAllAgentsResponse.length === 0 || getAllAgentsResponse.length === 1
+  );
+
+  signalingClient.close();
+  signalingServer.close();
+});

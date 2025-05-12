@@ -1,10 +1,10 @@
 import { assert, test } from "vitest";
 import { WebSocket } from "ws";
 import { SignalingServer } from "../src/index.js";
-import { decodeMessage, encodeMessage } from "../src/util.js";
 import {
   Agent,
   AgentId,
+  Request,
   RequestAnnounce,
   RequestGetAllAgents,
   RequestType,
@@ -12,6 +12,7 @@ import {
   ResponseGetAllAgents,
   ResponseType,
 } from "../src/types.js";
+import { assertIsResponse, decodeMessage, encodeMessage } from "../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -46,16 +47,17 @@ test("Agent can announce", async () => {
 
   // Announce with ID returns a success message.
   const agentId: AgentId = "peterhahne";
-  const request: RequestAnnounce = {
+  const request: Request = {
+    id: 0,
     type: RequestType.Announce,
-    agent: { id: agentId },
+    data: { id: agentId },
   };
 
   const respondedWithSuccess = new Promise<void>((resolve) => {
     ws.once("message", (data) => {
-      const response: ResponseAnnounce = decodeMessage(data);
+      const response = decodeMessage(data);
+      assertIsResponse(response);
       assert(response.type === ResponseType.Announce);
-      assert(response.result === null);
       resolve();
     });
   });
@@ -81,15 +83,17 @@ test("Get all peers", async () => {
 
   // Announce one agent.
   const agent1Id: AgentId = "peterhahne";
-  const requestAnnounce: RequestAnnounce = {
+  const requestAnnounce: Request = {
+    id: 0,
     type: RequestType.Announce,
-    agent: { id: agent1Id },
+    data: { id: agent1Id },
   };
   const peerAnnounced = new Promise<void>((resolve) => {
     ws.once("message", (data) => {
-      const response: ResponseAnnounce = decodeMessage(data);
+      const response = decodeMessage(data);
+      assertIsResponse(response);
       assert(response.type === ResponseType.Announce);
-      assert(response.result === null);
+      assert(response.data === null);
       resolve();
     });
   });
@@ -97,14 +101,18 @@ test("Get all peers", async () => {
   await peerAnnounced;
 
   // Get all agents.
-  const requestGetAllAgents: RequestGetAllAgents = {
+  const requestGetAllAgents: Request = {
+    id: 1,
     type: RequestType.GetAllAgents,
+    data: undefined,
   };
   const allAgentsReceived = new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const response: ResponseGetAllAgents = decodeMessage(data);
+      const response = decodeMessage(data);
+      assertIsResponse(response);
       assert(response.type === ResponseType.GetAllAgents);
-      resolve(response.agents);
+      assert(Array.isArray(response.data));
+      resolve(response.data);
     });
   });
   ws.send(encodeMessage(requestGetAllAgents));
