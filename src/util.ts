@@ -1,37 +1,49 @@
 import { RawData } from "ws";
-import { Request, Response } from "./types";
+import { Request, RequestMessage, Response, ResponseMessage } from "./types";
 
-export const encodeMessage = (message: Request | Response) =>
+export const encodeRequestMessage = (message: RequestMessage) =>
   JSON.stringify(message);
 
-export const decodeMessage = (message: RawData) =>
-  JSON.parse(message.toString());
+export const encodeResponseMessage = (message: ResponseMessage) =>
+  JSON.stringify(message);
 
-export const assertIsRequest: (
-  request: unknown
-) => asserts request is Request = (request) => {
+export const decodeRequestMessage = (message: RawData) => {
+  const requestMessage: RequestMessage = JSON.parse(message.toString());
   if (
-    typeof request === "object" &&
-    request !== null &&
-    "id" in request &&
-    "type" in request
+    typeof requestMessage === "object" &&
+    requestMessage !== null &&
+    "id" in requestMessage &&
+    "request" in requestMessage &&
+    typeof requestMessage.request === "object" &&
+    requestMessage.request !== null &&
+    "type" in requestMessage.request &&
+    "data" in requestMessage.request
   ) {
-    return;
+    return requestMessage;
   }
-  throw new Error(`Unexpected request: ${JSON.stringify(request, null, 4)}`);
+  throw new Error(
+    `Unknown request format: ${JSON.stringify(requestMessage, null, 4)}`
+  );
 };
 
-export const assertIsResponse: (
-  response: unknown
-) => asserts response is Response = (response) => {
+export const decodeResponseMessage = (message: RawData) => {
+  const responseMessage: ResponseMessage = JSON.parse(message.toString());
   if (
-    typeof response === "object" &&
-    response !== null &&
-    "type" in response &&
-    "id" in response &&
-    "data" in response
+    typeof responseMessage === "object" &&
+    responseMessage !== null &&
+    "id" in responseMessage &&
+    "response" in responseMessage &&
+    typeof responseMessage.response === "object" &&
+    responseMessage.response !== null &&
+    "type" in responseMessage.response &&
+    "data" in responseMessage.response
   ) {
-    return;
+    return responseMessage;
   }
-  throw new Error(`Unexpected response: ${JSON.stringify(response, null, 4)}`);
+  throw new Error(
+    `Unknown response format: ${JSON.stringify(responseMessage, null, 4)}`
+  );
 };
+
+export const encodeError = (error: Error) => JSON.stringify(error.message);
+export const decodeError = (error: string) => new Error(JSON.parse(error));

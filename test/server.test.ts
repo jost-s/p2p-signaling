@@ -5,14 +5,15 @@ import {
   Agent,
   AgentId,
   Request,
-  RequestAnnounce,
-  RequestGetAllAgents,
+  RequestMessage,
   RequestType,
-  ResponseAnnounce,
-  ResponseGetAllAgents,
   ResponseType,
 } from "../src/types.js";
-import { assertIsResponse, decodeMessage, encodeMessage } from "../src/util.js";
+import {
+  decodeError,
+  decodeResponseMessage,
+  encodeRequestMessage,
+} from "../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -34,6 +35,52 @@ test("Server startup and shutdown", async () => {
   });
 });
 
+test("Unknown message format does not crash server", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+
+  const connected = new Promise<WebSocket>((resolve) => {
+    const ws = new WebSocket(TEST_URL);
+    ws.on("open", () => {
+      resolve(ws);
+    });
+  });
+  const ws = await connected;
+
+  const unknownRequest = { unknown: "message" };
+  const errorResponse = await new Promise((resolve) => {
+    ws.once("message", (event) => {
+      const error = decodeError(event.toString());
+      resolve(error);
+    });
+    ws.send(JSON.stringify(unknownRequest));
+  });
+  assert.deepEqual(
+    errorResponse,
+    new Error(
+      `Unknown request format: ${JSON.stringify(unknownRequest, null, 4)}`
+    )
+  );
+
+  // Getting all agents still works.
+  const requestGetAllAgents: RequestMessage = {
+    id: 0,
+    request: {
+      type: RequestType.GetAllAgents,
+      data: null,
+    },
+  };
+  await new Promise<Agent[]>((resolve) => {
+    ws.once("message", (data) => {
+      const response = decodeResponseMessage(data);
+      assert(response.response.type === ResponseType.GetAllAgents);
+      resolve(response.response.data);
+    });
+    ws.send(encodeRequestMessage(requestGetAllAgents));
+  });
+
+  await server.close();
+});
+
 test("Agent can announce", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
@@ -47,30 +94,28 @@ test("Agent can announce", async () => {
 
   // Announce with ID returns a success message.
   const agentId: AgentId = "peterhahne";
-  const request: Request = {
+  const request: RequestMessage = {
     id: 0,
-    type: RequestType.Announce,
-    data: { id: agentId },
+    request: {
+      type: RequestType.Announce,
+      data: { id: agentId },
+    },
   };
 
-  const respondedWithSuccess = new Promise<void>((resolve) => {
+  await new Promise<null>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeMessage(data);
-      assertIsResponse(response);
-      assert(response.type === ResponseType.Announce);
-      resolve();
+      const response = decodeResponseMessage(data);
+      assert(response.response.type === ResponseType.Announce);
+      resolve(response.response.data);
     });
+    ws.send(encodeRequestMessage(request));
   });
-
-  ws.send(encodeMessage(request));
-
-  await respondedWithSuccess;
 
   ws.close();
   await server.close();
 });
 
-test("Get all peers", async () => {
+test("Get all agents", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
   const connected = new Promise<WebSocket>((resolve) => {
@@ -83,42 +128,39 @@ test("Get all peers", async () => {
 
   // Announce one agent.
   const agent1Id: AgentId = "peterhahne";
-  const requestAnnounce: Request = {
+  const requestAnnounce: RequestMessage = {
     id: 0,
-    type: RequestType.Announce,
-    data: { id: agent1Id },
+    request: {
+      type: RequestType.Announce,
+      data: { id: agent1Id },
+    },
   };
-  const peerAnnounced = new Promise<void>((resolve) => {
+  await new Promise<void>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeMessage(data);
-      assertIsResponse(response);
-      assert(response.type === ResponseType.Announce);
-      assert(response.data === null);
+      const response = decodeResponseMessage(data);
+      assert(response.response.type === ResponseType.Announce);
       resolve();
     });
+    ws.send(encodeRequestMessage(requestAnnounce));
   });
-  ws.send(encodeMessage(requestAnnounce));
-  await peerAnnounced;
 
   // Get all agents.
-  const requestGetAllAgents: Request = {
+  const requestGetAllAgents: RequestMessage = {
     id: 1,
-    type: RequestType.GetAllAgents,
-    data: undefined,
+    request: {
+      type: RequestType.GetAllAgents,
+      data: null,
+    },
   };
-  const allAgentsReceived = new Promise<Agent[]>((resolve) => {
+  const allAgents = await new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeMessage(data);
-      assertIsResponse(response);
-      assert(response.type === ResponseType.GetAllAgents);
-      assert(Array.isArray(response.data));
-      resolve(response.data);
+      const response = decodeResponseMessage(data);
+      assert(response.response.type === ResponseType.GetAllAgents);
+      resolve(response.response.data);
     });
+    ws.send(encodeRequestMessage(requestGetAllAgents));
   });
-  ws.send(encodeMessage(requestGetAllAgents));
-  const agents = await allAgentsReceived;
-  console.log("agents", agents);
-  assert.deepEqual(agents, [{ id: agent1Id }]);
+  assert.deepEqual(allAgents, [{ id: agent1Id }]);
 
   ws.close();
   await server.close();

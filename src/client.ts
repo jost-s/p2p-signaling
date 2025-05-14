@@ -1,11 +1,13 @@
 import {
   Agent,
   Request,
+  RequestMessage,
   RequestType,
   Response,
+  ResponseMessage,
   ResponseType,
 } from "./types.js";
-import { assertIsResponse, decodeMessage, encodeMessage } from "./util.js";
+import { decodeResponseMessage, encodeRequestMessage } from "./util.js";
 
 type RequestResolveFn = (value: Response) => void;
 type RequestRejectFn = (reason?: any) => void;
@@ -50,17 +52,23 @@ export class SignalingClient {
   }
 
   private messageListener = (event: MessageEvent) => {
-    const response = decodeMessage(event.data);
-    assertIsResponse(response);
-    console.log("Incoming response", response);
-    const pendingRequest = this.requests.get(response.id);
+    let responseMessage: ResponseMessage;
+    try {
+      responseMessage = decodeResponseMessage(event.data);
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+
+    console.log("Incoming response", responseMessage);
+    const pendingRequest = this.requests.get(responseMessage.id);
     if (pendingRequest) {
-      pendingRequest.resolve(response);
-      this.requests.delete(response.id);
+      pendingRequest.resolve(responseMessage.response);
+      this.requests.delete(responseMessage.id);
     } else {
       console.error(
         `Received response to an unknown request: ${JSON.stringify(
-          response,
+          responseMessage,
           null,
           4
         )}`
@@ -68,22 +76,24 @@ export class SignalingClient {
     }
   };
 
-  private request(request: Request) {
+  private request(request: RequestMessage) {
     return new Promise<Response>((resolve, reject) => {
       if (this.webSocket.readyState !== this.webSocket.OPEN) {
         return reject("WebSocket not open");
       }
 
-      this.webSocket.send(encodeMessage(request));
+      this.webSocket.send(encodeRequestMessage(request));
       this.requests.set(request.id, { resolve, reject });
     });
   }
 
   async announce(agent: Agent) {
-    const request: Request = {
+    const request: RequestMessage = {
       id: this.requestIndex,
-      type: RequestType.Announce,
-      data: agent,
+      request: {
+        type: RequestType.Announce,
+        data: agent,
+      },
     };
     this.requestIndex++;
     const response = await this.request(request);
@@ -97,10 +107,12 @@ export class SignalingClient {
   }
 
   async getAllAgents() {
-    const request: Request = {
+    const request: RequestMessage = {
       id: this.requestIndex,
-      type: RequestType.GetAllAgents,
-      data: undefined,
+      request: {
+        type: RequestType.GetAllAgents,
+        data: null,
+      },
     };
     this.requestIndex++;
     const response = await this.request(request);

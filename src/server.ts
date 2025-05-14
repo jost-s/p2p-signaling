@@ -1,8 +1,19 @@
 import { IncomingMessage } from "http";
-import { WebSocketServer } from "ws";
 import type WebSocket from "ws";
-import { AgentId, RequestType, ResponseType } from "./types.js";
-import { assertIsRequest, decodeMessage, encodeMessage } from "./util.js";
+import { WebSocketServer } from "ws";
+import {
+  AgentId,
+  RequestMessage,
+  RequestType,
+  Response,
+  ResponseMessage,
+  ResponseType,
+} from "./types.js";
+import {
+  decodeRequestMessage,
+  encodeError,
+  encodeResponseMessage,
+} from "./util.js";
 
 export class SignalingServer {
   private readonly wss: WebSocketServer;
@@ -24,32 +35,49 @@ export class SignalingServer {
       socket.on("error", (error) => console.error(error));
 
       socket.on("message", (data) => {
-        const request = decodeMessage(data);
-        assertIsRequest(request);
-        console.log("Incoming request", request);
-
-        let response;
-        if (
-          request.type === RequestType.Announce &&
-          typeof request.data === "object"
-        ) {
-          this.agents.set(request.data.id, socket);
-          response = encodeMessage({
-            id: request.id,
-            type: ResponseType.Announce,
-            data: null,
-          });
-        } else if (request.type === RequestType.GetAllAgents) {
-          const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
-          response = encodeMessage({
-            id: request.id,
-            type: ResponseType.GetAllAgents,
-            data: agents,
-          });
-        } else {
+        let requestMessage: RequestMessage;
+        try {
+          requestMessage = decodeRequestMessage(data);
+        } catch (error) {
+          console.error(error);
+          if (error instanceof Error) {
+            socket.send(encodeError(error));
+          }
           return;
         }
-        socket.send(response);
+        console.log("Incoming request", requestMessage);
+
+        let response: Response;
+        if (
+          requestMessage.request.type === RequestType.Announce &&
+          typeof requestMessage.request.data === "object"
+        ) {
+          this.agents.set(requestMessage.request.data.id, socket);
+          response = {
+            type: ResponseType.Announce,
+            data: null,
+          };
+        } else if (requestMessage.request.type === RequestType.GetAllAgents) {
+          const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
+          response = {
+            type: ResponseType.GetAllAgents,
+            data: agents,
+          };
+        } else {
+          console.error(
+            `Unexpected request type: ${JSON.stringify(
+              requestMessage,
+              null,
+              4
+            )}`
+          );
+          return;
+        }
+        const responseMessage: ResponseMessage = {
+          id: requestMessage.id,
+          response,
+        };
+        socket.send(encodeResponseMessage(responseMessage));
       });
     });
   }

@@ -1,7 +1,6 @@
-import { test, assert } from "vitest";
-import { WebSocketServer } from "ws";
-import { SignalingClient } from "../src/client";
+import { assert, test } from "vitest";
 import { SignalingServer } from "../src";
+import { SignalingClient } from "../src/client";
 import { Agent } from "../src/types";
 
 const TEST_URL = new URL("ws://localhost:9000");
