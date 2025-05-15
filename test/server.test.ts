@@ -20,11 +20,12 @@ const TEST_URL = new URL("ws://localhost:9000");
 test("Server startup and shutdown", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  await new Promise<void>((resolve) => {
+  const ws = await new Promise<WebSocket>((resolve) => {
     const ws = new WebSocket(TEST_URL);
     ws.on("error", () => assert.fail());
-    ws.on("open", () => resolve());
+    ws.on("open", () => resolve(ws));
   });
+  ws.close();
 
   await server.close();
 
@@ -38,13 +39,12 @@ test("Server startup and shutdown", async () => {
 test("Unknown message format does not crash server", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const connected = new Promise<WebSocket>((resolve) => {
+  const ws = await new Promise<WebSocket>((resolve) => {
     const ws = new WebSocket(TEST_URL);
     ws.on("open", () => {
       resolve(ws);
     });
   });
-  const ws = await connected;
 
   const unknownRequest = { unknown: "message" };
   const errorResponse = await new Promise((resolve) => {
@@ -84,13 +84,12 @@ test("Unknown message format does not crash server", async () => {
 test("Agent can announce", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const connected = new Promise<WebSocket>((resolve) => {
+  const ws = await new Promise<WebSocket>((resolve) => {
     const ws = new WebSocket(TEST_URL);
     ws.on("open", () => {
       resolve(ws);
     });
   });
-  const ws = await connected;
 
   // Announce with ID returns a success message.
   const agentId: AgentId = "peterhahne";
@@ -102,7 +101,7 @@ test("Agent can announce", async () => {
     },
   };
 
-  await new Promise<null>((resolve) => {
+  const response = await new Promise<null>((resolve) => {
     ws.once("message", (data) => {
       const response = decodeResponseMessage(data);
       assert(response.response.type === ResponseType.Announce);
@@ -110,6 +109,7 @@ test("Agent can announce", async () => {
     });
     ws.send(encodeRequestMessage(request));
   });
+  assert.equal(response, null);
 
   ws.close();
   await server.close();
@@ -118,13 +118,12 @@ test("Agent can announce", async () => {
 test("Get all agents", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const connected = new Promise<WebSocket>((resolve) => {
+  const ws = await new Promise<WebSocket>((resolve) => {
     const ws = new WebSocket(TEST_URL);
     ws.on("open", () => {
       resolve(ws);
     });
   });
-  const ws = await connected;
 
   // Announce one agent.
   const agent1Id: AgentId = "peterhahne";
@@ -165,21 +164,3 @@ test("Get all agents", async () => {
   ws.close();
   await server.close();
 });
-
-// test("RTC offer is forwarded to target", async () => {
-//   const server = await SignalingServer.start();
-
-//   const sdpOfferJson = JSON.stringify({ type: "offer" });
-//   const target = "peer2";
-
-//   const connected = new Promise((resolve) => {
-//     const ws = new WebSocket(new URL("ws://localhost:9000"), {});
-//     ws.on("open", () => {
-//       resolve(ws);
-//     });
-//   });
-//   const ws = await connected;
-//   ws.send()
-
-//   server.close();
-// });

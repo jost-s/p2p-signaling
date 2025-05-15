@@ -1,10 +1,14 @@
 import { RawData } from "ws";
-import { Request, RequestMessage, Response, ResponseMessage } from "./types";
+import { RequestMessage, ResponseMessage } from "./types.js";
+import { SignalingMessage } from "./types-signaling.js";
 
 export const encodeRequestMessage = (message: RequestMessage) =>
   JSON.stringify(message);
 
 export const encodeResponseMessage = (message: ResponseMessage) =>
+  JSON.stringify(message);
+
+export const encodeSignalingMessage = (message: SignalingMessage) =>
   JSON.stringify(message);
 
 export const decodeRequestMessage = (message: RawData) => {
@@ -42,6 +46,22 @@ export const decodeResponseMessage = (message: RawData) => {
   }
   throw new Error(
     `Unknown response format: ${JSON.stringify(responseMessage, null, 4)}`
+  );
+};
+
+export const decodeSignalingMessage = (message: RawData) => {
+  const signalingMessage: SignalingMessage = JSON.parse(message.toString());
+  if (
+    typeof signalingMessage === "object" &&
+    signalingMessage !== null &&
+    "signaling" in signalingMessage &&
+    typeof signalingMessage.signaling === "object" &&
+    signalingMessage.signaling !== null
+  ) {
+    return signalingMessage;
+  }
+  throw new Error(
+    `Unknown signaling format: ${JSON.stringify(signalingMessage, null, 4)}`
   );
 };
 

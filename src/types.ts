@@ -1,3 +1,5 @@
+import { RtcOffer } from "./types-signaling.js";
+
 export type AgentId = string;
 
 export interface Agent {
@@ -7,6 +9,7 @@ export interface Agent {
 export enum RequestType {
   Announce = "request_announce",
   GetAllAgents = "request_get_all_agents",
+  SendOffer = "request_send_offer",
 }
 
 export interface RequestAnnounce {
@@ -19,7 +22,12 @@ export interface RequestGetAllAgents {
   data: null;
 }
 
-export type Request = RequestAnnounce | RequestGetAllAgents;
+export interface RequestSendOffer {
+  type: RequestType.SendOffer;
+  data: RtcOffer;
+}
+
+export type Request = RequestAnnounce | RequestGetAllAgents | RequestSendOffer;
 
 export interface RequestMessage {
   id: number;
@@ -29,6 +37,8 @@ export interface RequestMessage {
 export enum ResponseType {
   Announce = "response_announce",
   GetAllAgents = "response_get_all_agents",
+  SendOffer = "response_send_offer",
+  Error = "response_error",
 }
 
 export interface ResponseAnnounce {
@@ -41,7 +51,21 @@ export interface ResponseGetAllAgents {
   data: Agent[];
 }
 
-export type Response = ResponseAnnounce | ResponseGetAllAgents;
+export interface ResponseSendOffer {
+  type: ResponseType.SendOffer;
+  data: null;
+}
+
+export interface ResponseError {
+  type: ResponseType.Error;
+  data: string;
+}
+
+export type Response =
+  | ResponseAnnounce
+  | ResponseGetAllAgents
+  | ResponseSendOffer
+  | ResponseError;
 
 export interface ResponseMessage {
   id: number;
