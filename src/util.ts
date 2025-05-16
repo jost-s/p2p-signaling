@@ -1,6 +1,11 @@
 import { RawData } from "ws";
-import { RequestMessage, ResponseMessage } from "./types.js";
-import { SignalingMessage } from "./types-signaling.js";
+import {
+  RequestMessage,
+  RequestType,
+  ResponseMessage,
+  ResponseType,
+} from "./types.js";
+import { SignalingMessage, SignalingType } from "./types-signaling.js";
 
 export const encodeRequestMessage = (message: RequestMessage) =>
   JSON.stringify(message);
@@ -21,6 +26,9 @@ export const decodeRequestMessage = (message: RawData) => {
     typeof requestMessage.request === "object" &&
     requestMessage.request !== null &&
     "type" in requestMessage.request &&
+    Object.values(RequestType).some(
+      (type) => requestMessage.request.type === type
+    ) &&
     "data" in requestMessage.request
   ) {
     return requestMessage;
@@ -40,6 +48,9 @@ export const decodeResponseMessage = (message: RawData) => {
     typeof responseMessage.response === "object" &&
     responseMessage.response !== null &&
     "type" in responseMessage.response &&
+    Object.values(ResponseType).some(
+      (type) => responseMessage.response.type === type
+    ) &&
     "data" in responseMessage.response
   ) {
     return responseMessage;
@@ -54,9 +65,11 @@ export const decodeSignalingMessage = (message: RawData) => {
   if (
     typeof signalingMessage === "object" &&
     signalingMessage !== null &&
-    "signaling" in signalingMessage &&
-    typeof signalingMessage.signaling === "object" &&
-    signalingMessage.signaling !== null
+    "type" in signalingMessage &&
+    Object.values(SignalingType).some(
+      (type) => signalingMessage.type === type
+    ) &&
+    "data" in signalingMessage
   ) {
     return signalingMessage;
   }

@@ -12,7 +12,7 @@ import {
   decodeSignalingMessage,
   encodeRequestMessage,
 } from "../src/util.js";
-import { SignalingMessageType } from "../src/types-signaling.js";
+import { SignalingType } from "../src/types-signaling.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -26,9 +26,12 @@ test("RTC offer to unregistered agent fails", async () => {
       request: {
         type: RequestType.SendOffer,
         data: {
-          sender: agent.agentId,
-          receiver: "unregisteredAgent",
-          offer: { type: "offer" },
+          type: SignalingType.Offer,
+          data: {
+            sender: agent.agentId,
+            receiver: "unregisteredAgent",
+            offer: { type: "offer" },
+          },
         },
       },
     };
@@ -60,8 +63,8 @@ test("RTC offer is forwarded to target agent", async () => {
   const offerReceived = new Promise((resolve) => {
     agent2.ws.on("message", (data) => {
       const message = decodeSignalingMessage(data);
-      assert(message.type === SignalingMessageType.Offer);
-      assert.deepEqual(message.signaling.offer, offer);
+      assert(message.type === SignalingType.Offer);
+      assert.deepEqual(message.data.offer, offer);
       resolve(data);
     });
   });
@@ -71,9 +74,12 @@ test("RTC offer is forwarded to target agent", async () => {
     request: {
       type: RequestType.SendOffer,
       data: {
-        sender: agent1.agentId,
-        receiver: agent2.agentId,
-        offer,
+        type: SignalingType.Offer,
+        data: {
+          sender: agent1.agentId,
+          receiver: agent2.agentId,
+          offer,
+        },
       },
     },
   };
@@ -88,6 +94,90 @@ test("RTC offer is forwarded to target agent", async () => {
   assert.equal(offerRequestResponse, null);
 
   await offerReceived;
+
+  agent1.ws.close();
+  agent2.ws.close();
+  await server.close();
+});
+
+test("RTC answer to unregistered agent fails", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+
+  const [agent] = await createAgents(1);
+  await new Promise<string>((resolve) => {
+    const sendAnswerMessage: RequestMessage = {
+      id: 0,
+      request: {
+        type: RequestType.SendAnswer,
+        data: {
+          type: SignalingType.Answer,
+          data: {
+            sender: agent.agentId,
+            receiver: "unregisteredAgent",
+            answer: { type: "answer" },
+          },
+        },
+      },
+    };
+    agent.ws.once("message", (data) => {
+      const message = decodeResponseMessage(data);
+      assert(message.response.type === ResponseType.Error);
+      assert.equal(
+        message.response.data,
+        "Target agent not registered on server"
+      );
+      resolve(message.response.data);
+    });
+    agent.ws.send(encodeRequestMessage(sendAnswerMessage));
+  });
+
+  agent.ws.close();
+  await server.close();
+});
+
+test("RTC answer is forwarded to target agent", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const [agent1, agent2] = await createAgents(2);
+
+  const answer: RTCSessionDescriptionInit = {
+    type: "answer",
+    sdp: "some_connection_details",
+  };
+
+  const answerReceived = new Promise((resolve) => {
+    agent2.ws.on("message", (data) => {
+      const message = decodeSignalingMessage(data);
+      assert(message.type === SignalingType.Answer);
+      assert.deepEqual(message.data.answer, answer);
+      resolve(data);
+    });
+  });
+
+  const answerMessage: RequestMessage = {
+    id: 1,
+    request: {
+      type: RequestType.SendAnswer,
+      data: {
+        type: SignalingType.Answer,
+        data: {
+          sender: agent1.agentId,
+          receiver: agent2.agentId,
+          answer,
+        },
+      },
+    },
+  };
+  const answerRequestResponse = await new Promise<null>((resolve) => {
+    agent1.ws.once("message", (data) => {
+      const message = decodeResponseMessage(data);
+      assert(message.response.type === ResponseType.SendAnswer);
+      resolve(message.response.data);
+    });
+    agent1.ws.send(encodeRequestMessage(answerMessage));
+  });
+  assert.equal(answerRequestResponse, null);
+
+  await answerReceived;
 
   agent1.ws.close();
   agent2.ws.close();

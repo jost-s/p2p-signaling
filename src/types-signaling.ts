@@ -6,13 +6,25 @@ export interface RtcOffer {
   offer: RTCSessionDescriptionInit;
 }
 
-export enum SignalingMessageType {
+export interface RtcAnswer {
+  sender: AgentId;
+  receiver: AgentId;
+  answer: RTCSessionDescriptionInit;
+}
+
+export enum SignalingType {
   Offer = "signaling_offer",
+  Answer = "signaling_answer",
 }
 
-export type Signaling = RtcOffer;
-
-export interface SignalingMessage {
-  type: SignalingMessageType;
-  signaling: Signaling;
+export interface SignalingOffer {
+  type: SignalingType.Offer;
+  data: RtcOffer;
 }
+
+export interface SignalingAnswer {
+  type: SignalingType.Answer;
+  data: RtcAnswer;
+}
+
+export type SignalingMessage = SignalingOffer | SignalingAnswer;

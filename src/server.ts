@@ -15,7 +15,7 @@ import {
   encodeResponseMessage,
   encodeSignalingMessage,
 } from "./util.js";
-import { SignalingMessage, SignalingMessageType } from "./types-signaling.js";
+import { SignalingMessage, SignalingType } from "./types-signaling.js";
 
 export class SignalingServer {
   private readonly wss: WebSocketServer;
@@ -65,21 +65,30 @@ export class SignalingServer {
             type: ResponseType.GetAllAgents,
             data: agents,
           };
-        } else if (requestMessage.request.type === RequestType.SendOffer) {
+        } else if (
+          requestMessage.request.type === RequestType.SendOffer ||
+          requestMessage.request.type === RequestType.SendAnswer
+        ) {
           const targetAgentWs = this.agents.get(
-            requestMessage.request.data.receiver
+            requestMessage.request.data.data.receiver
           );
           if (targetAgentWs) {
-            const signalingMessage: SignalingMessage = {
-              type: SignalingMessageType.Offer,
-              signaling: requestMessage.request.data,
-            };
-            targetAgentWs.send(encodeSignalingMessage(signalingMessage));
+            targetAgentWs.send(
+              encodeSignalingMessage(requestMessage.request.data)
+            );
             response = {
-              type: ResponseType.SendOffer,
+              type:
+                requestMessage.request.type === RequestType.SendOffer
+                  ? ResponseType.SendOffer
+                  : ResponseType.SendAnswer,
               data: null,
             };
           } else {
+            console.error(
+              "Target agent",
+              requestMessage.request.data.data.receiver,
+              "not registered on server"
+            );
             response = {
               type: ResponseType.Error,
               data: "Target agent not registered on server",
