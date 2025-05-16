@@ -16,6 +16,20 @@ export const encodeResponseMessage = (message: ResponseMessage) =>
 export const encodeSignalingMessage = (message: SignalingMessage) =>
   JSON.stringify(message);
 
+export const decodeMessage = (message: RawData) => {
+  const decodedMessage = JSON.parse(message.toString());
+  if (
+    typeof decodedMessage === "object" &&
+    decodedMessage !== null &&
+    "type" in decodedMessage &&
+    Object.values(SignalingType).some((type) => decodedMessage.type === type) &&
+    "data" in decodeMessage
+  ) {
+    return decodedMessage;
+  }
+  throw new Error(`Unknown message format: ${formatError(decodeMessage)}`);
+};
+
 export const decodeRequestMessage = (message: RawData) => {
   const requestMessage: RequestMessage = JSON.parse(message.toString());
   if (
@@ -33,9 +47,7 @@ export const decodeRequestMessage = (message: RawData) => {
   ) {
     return requestMessage;
   }
-  throw new Error(
-    `Unknown request format: ${JSON.stringify(requestMessage, null, 4)}`
-  );
+  throw new Error(`Unknown request format: ${formatError(requestMessage)}`);
 };
 
 export const decodeResponseMessage = (message: RawData) => {
@@ -55,9 +67,7 @@ export const decodeResponseMessage = (message: RawData) => {
   ) {
     return responseMessage;
   }
-  throw new Error(
-    `Unknown response format: ${JSON.stringify(responseMessage, null, 4)}`
-  );
+  throw new Error(`Unknown response format: ${formatError(responseMessage)}`);
 };
 
 export const decodeSignalingMessage = (message: RawData) => {
@@ -73,10 +83,7 @@ export const decodeSignalingMessage = (message: RawData) => {
   ) {
     return signalingMessage;
   }
-  throw new Error(
-    `Unknown signaling format: ${JSON.stringify(signalingMessage, null, 4)}`
-  );
+  throw new Error(`Unknown signaling format: ${formatError(signalingMessage)}`);
 };
 
-export const encodeError = (error: Error) => JSON.stringify(error.message);
-export const decodeError = (error: string) => new Error(JSON.parse(error));
+export const formatError = (object: object) => JSON.stringify(object, null, 2);

@@ -1,18 +1,18 @@
 import { assert, test } from "vitest";
 import { WebSocket } from "ws";
-import { SignalingServer } from "../src/server.js";
+import { SignalingServer } from "../../src/server.js";
 import {
   AgentId,
   RequestMessage,
   RequestType,
   ResponseType,
-} from "../src/types.js";
+} from "../../src/types.js";
 import {
   decodeResponseMessage,
   decodeSignalingMessage,
   encodeRequestMessage,
-} from "../src/util.js";
-import { SignalingType } from "../src/types-signaling.js";
+} from "../../src/util.js";
+import { SignalingType } from "../../src/types-signaling.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 

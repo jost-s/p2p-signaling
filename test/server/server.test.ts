@@ -1,19 +1,18 @@
 import { assert, test } from "vitest";
 import { WebSocket } from "ws";
-import { SignalingServer } from "../src/index.js";
+import { SignalingServer } from "../../src/index.js";
 import {
   Agent,
   AgentId,
-  Request,
   RequestMessage,
   RequestType,
   ResponseType,
-} from "../src/types.js";
+} from "../../src/types.js";
 import {
-  decodeError,
   decodeResponseMessage,
   encodeRequestMessage,
-} from "../src/util.js";
+  formatError,
+} from "../../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -48,17 +47,15 @@ test("Unknown message format does not crash server", async () => {
 
   const unknownRequest = { unknown: "message" };
   const errorResponse = await new Promise((resolve) => {
-    ws.once("message", (event) => {
-      const error = decodeError(event.toString());
+    ws.once("message", (data) => {
+      const error = data.toString();
       resolve(error);
     });
     ws.send(JSON.stringify(unknownRequest));
   });
   assert.deepEqual(
     errorResponse,
-    new Error(
-      `Unknown request format: ${JSON.stringify(unknownRequest, null, 4)}`
-    )
+    `Unknown request format: ${formatError(unknownRequest)}`
   );
 
   // Getting all agents still works.

@@ -6,7 +6,8 @@
   "types": "lib/index.d.ts",
   "scripts": {
     "test": "vitest --run",
-    "build": "tsc"
+    "build": "tsc",
+    "serve": "node serve.js"
   },
   "keywords": [],
   "author": "",

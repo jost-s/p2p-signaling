@@ -11,9 +11,9 @@ import {
 } from "./types.js";
 import {
   decodeRequestMessage,
-  encodeError,
   encodeResponseMessage,
   encodeSignalingMessage,
+  formatError,
 } from "./util.js";
 import { SignalingMessage, SignalingType } from "./types-signaling.js";
 
@@ -43,7 +43,7 @@ export class SignalingServer {
         } catch (error) {
           console.error(error);
           if (error instanceof Error) {
-            socket.send(encodeError(error));
+            socket.send(error.message);
           }
           return;
         }
@@ -96,11 +96,7 @@ export class SignalingServer {
           }
         } else {
           console.error(
-            `Unexpected request type: ${JSON.stringify(
-              requestMessage,
-              null,
-              4
-            )}`
+            `Unexpected request type: ${formatError(requestMessage)}`
           );
           return;
         }

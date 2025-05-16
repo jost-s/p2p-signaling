@@ -1,10 +1,4 @@
-import {
-  RtcAnswer,
-  RtcOffer,
-  SignalingAnswer,
-  SignalingMessage,
-  SignalingOffer,
-} from "./types-signaling.js";
+import { SignalingAnswer, SignalingOffer } from "./types-signaling.js";
 
 export type AgentId = string;
 
