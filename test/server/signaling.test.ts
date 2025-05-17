@@ -3,16 +3,13 @@ import { WebSocket } from "ws";
 import { SignalingServer } from "../../src/server.js";
 import {
   AgentId,
+  MessageType,
   RequestMessage,
   RequestType,
   ResponseType,
-} from "../../src/types.js";
-import {
-  decodeResponseMessage,
-  decodeSignalingMessage,
-  encodeRequestMessage,
-} from "../../src/util.js";
-import { SignalingType } from "../../src/types-signaling.js";
+  SignalingType,
+} from "../../src/types/index.js";
+import { decodeMessage, encodeRequestMessage } from "../../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -22,6 +19,7 @@ test("RTC offer to unregistered agent fails", async () => {
   const [agent] = await createAgents(1);
   await new Promise<string>((resolve) => {
     const sendOfferMessage: RequestMessage = {
+      type: MessageType.Request,
       id: 0,
       request: {
         type: RequestType.SendOffer,
@@ -36,7 +34,8 @@ test("RTC offer to unregistered agent fails", async () => {
       },
     };
     agent.ws.once("message", (data) => {
-      const message = decodeResponseMessage(data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
       assert.equal(
         message.response.data,
@@ -62,14 +61,16 @@ test("RTC offer is forwarded to target agent", async () => {
 
   const offerReceived = new Promise((resolve) => {
     agent2.ws.on("message", (data) => {
-      const message = decodeSignalingMessage(data);
-      assert(message.type === SignalingType.Offer);
-      assert.deepEqual(message.data.offer, offer);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Signaling);
+      assert(message.signaling.type === SignalingType.Offer);
+      assert.deepEqual(message.signaling.data.offer, offer);
       resolve(data);
     });
   });
 
   const offerMessage: RequestMessage = {
+    type: MessageType.Request,
     id: 1,
     request: {
       type: RequestType.SendOffer,
@@ -85,7 +86,8 @@ test("RTC offer is forwarded to target agent", async () => {
   };
   const offerRequestResponse = await new Promise<null>((resolve) => {
     agent1.ws.once("message", (data) => {
-      const message = decodeResponseMessage(data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendOffer);
       resolve(message.response.data);
     });
@@ -106,6 +108,7 @@ test("RTC answer to unregistered agent fails", async () => {
   const [agent] = await createAgents(1);
   await new Promise<string>((resolve) => {
     const sendAnswerMessage: RequestMessage = {
+      type: MessageType.Request,
       id: 0,
       request: {
         type: RequestType.SendAnswer,
@@ -120,7 +123,8 @@ test("RTC answer to unregistered agent fails", async () => {
       },
     };
     agent.ws.once("message", (data) => {
-      const message = decodeResponseMessage(data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
       assert.equal(
         message.response.data,
@@ -146,14 +150,16 @@ test("RTC answer is forwarded to target agent", async () => {
 
   const answerReceived = new Promise((resolve) => {
     agent2.ws.on("message", (data) => {
-      const message = decodeSignalingMessage(data);
-      assert(message.type === SignalingType.Answer);
-      assert.deepEqual(message.data.answer, answer);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Signaling);
+      assert(message.signaling.type === SignalingType.Answer);
+      assert.deepEqual(message.signaling.data.answer, answer);
       resolve(data);
     });
   });
 
   const answerMessage: RequestMessage = {
+    type: MessageType.Request,
     id: 1,
     request: {
       type: RequestType.SendAnswer,
@@ -169,7 +175,8 @@ test("RTC answer is forwarded to target agent", async () => {
   };
   const answerRequestResponse = await new Promise<null>((resolve) => {
     agent1.ws.once("message", (data) => {
-      const message = decodeResponseMessage(data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendAnswer);
       resolve(message.response.data);
     });
@@ -205,6 +212,7 @@ const createAgents = async (
       if (announceAgent) {
         // Announce agent.
         const requestAnnounceAgent: RequestMessage = {
+          type: MessageType.Request,
           id: 0,
           request: {
             type: RequestType.Announce,
@@ -213,9 +221,10 @@ const createAgents = async (
         };
         await new Promise<null>((resolve) => {
           ws.once("message", (data) => {
-            const response = decodeResponseMessage(data);
-            assert(response.response.type === ResponseType.Announce);
-            resolve(response.response.data);
+            const message = decodeMessage(data);
+            assert(message.type === MessageType.Response);
+            assert(message.response.type === ResponseType.Announce);
+            resolve(message.response.data);
           });
           ws.send(encodeRequestMessage(requestAnnounceAgent));
         });

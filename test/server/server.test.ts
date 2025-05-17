@@ -4,14 +4,15 @@ import { SignalingServer } from "../../src/index.js";
 import {
   Agent,
   AgentId,
+  MessageType,
   RequestMessage,
   RequestType,
   ResponseType,
-} from "../../src/types.js";
+} from "../../src/types/index.js";
 import {
-  decodeResponseMessage,
-  encodeRequestMessage,
   formatError,
+  decodeMessage,
+  encodeRequestMessage,
 } from "../../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
@@ -55,11 +56,12 @@ test("Unknown message format does not crash server", async () => {
   });
   assert.deepEqual(
     errorResponse,
-    `Unknown request format: ${formatError(unknownRequest)}`
+    `Unknown message format: ${formatError(unknownRequest)}`
   );
 
   // Getting all agents still works.
   const requestGetAllAgents: RequestMessage = {
+    type: MessageType.Request,
     id: 0,
     request: {
       type: RequestType.GetAllAgents,
@@ -68,9 +70,10 @@ test("Unknown message format does not crash server", async () => {
   };
   await new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeResponseMessage(data);
-      assert(response.response.type === ResponseType.GetAllAgents);
-      resolve(response.response.data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.GetAllAgents);
+      resolve(message.response.data);
     });
     ws.send(encodeRequestMessage(requestGetAllAgents));
   });
@@ -91,6 +94,7 @@ test("Agent can announce", async () => {
   // Announce with ID returns a success message.
   const agentId: AgentId = "peterhahne";
   const request: RequestMessage = {
+    type: MessageType.Request,
     id: 0,
     request: {
       type: RequestType.Announce,
@@ -100,9 +104,10 @@ test("Agent can announce", async () => {
 
   const response = await new Promise<null>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeResponseMessage(data);
-      assert(response.response.type === ResponseType.Announce);
-      resolve(response.response.data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Announce);
+      resolve(message.response.data);
     });
     ws.send(encodeRequestMessage(request));
   });
@@ -125,6 +130,7 @@ test("Get all agents", async () => {
   // Announce one agent.
   const agent1Id: AgentId = "peterhahne";
   const requestAnnounce: RequestMessage = {
+    type: MessageType.Request,
     id: 0,
     request: {
       type: RequestType.Announce,
@@ -133,8 +139,9 @@ test("Get all agents", async () => {
   };
   await new Promise<void>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeResponseMessage(data);
-      assert(response.response.type === ResponseType.Announce);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Announce);
       resolve();
     });
     ws.send(encodeRequestMessage(requestAnnounce));
@@ -142,6 +149,7 @@ test("Get all agents", async () => {
 
   // Get all agents.
   const requestGetAllAgents: RequestMessage = {
+    type: MessageType.Request,
     id: 1,
     request: {
       type: RequestType.GetAllAgents,
@@ -150,9 +158,10 @@ test("Get all agents", async () => {
   };
   const allAgents = await new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const response = decodeResponseMessage(data);
-      assert(response.response.type === ResponseType.GetAllAgents);
-      resolve(response.response.data);
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.GetAllAgents);
+      resolve(message.response.data);
     });
     ws.send(encodeRequestMessage(requestGetAllAgents));
   });

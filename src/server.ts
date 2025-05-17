@@ -2,20 +2,21 @@ import { IncomingMessage } from "http";
 import type WebSocket from "ws";
 import { WebSocketServer } from "ws";
 import {
-  AgentId,
-  RequestMessage,
+  Message,
+  MessageType,
   RequestType,
-  Response,
-  ResponseMessage,
   ResponseType,
-} from "./types.js";
+  SignalingMessage,
+  type AgentId,
+  type Response,
+  type ResponseMessage,
+} from "./types/index.js";
 import {
-  decodeRequestMessage,
+  decodeMessage,
   encodeResponseMessage,
   encodeSignalingMessage,
   formatError,
 } from "./util.js";
-import { SignalingMessage, SignalingType } from "./types-signaling.js";
 
 export class SignalingServer {
   private readonly wss: WebSocketServer;
@@ -37,9 +38,9 @@ export class SignalingServer {
       socket.on("error", (error) => console.error(error));
 
       socket.on("message", (data) => {
-        let requestMessage: RequestMessage;
+        let message: Message;
         try {
-          requestMessage = decodeRequestMessage(data);
+          message = decodeMessage(data);
         } catch (error) {
           console.error(error);
           if (error instanceof Error) {
@@ -47,64 +48,69 @@ export class SignalingServer {
           }
           return;
         }
-        console.log("Incoming request", requestMessage);
 
-        let response: Response;
-        if (
-          requestMessage.request.type === RequestType.Announce &&
-          typeof requestMessage.request.data === "object"
-        ) {
-          this.agents.set(requestMessage.request.data.id, socket);
-          response = {
-            type: ResponseType.Announce,
-            data: null,
-          };
-        } else if (requestMessage.request.type === RequestType.GetAllAgents) {
-          const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
-          response = {
-            type: ResponseType.GetAllAgents,
-            data: agents,
-          };
-        } else if (
-          requestMessage.request.type === RequestType.SendOffer ||
-          requestMessage.request.type === RequestType.SendAnswer
-        ) {
-          const targetAgentWs = this.agents.get(
-            requestMessage.request.data.data.receiver
-          );
-          if (targetAgentWs) {
-            targetAgentWs.send(
-              encodeSignalingMessage(requestMessage.request.data)
-            );
+        if (message.type === MessageType.Request) {
+          console.log("Incoming request", message);
+
+          let response: Response;
+          if (
+            message.request.type === RequestType.Announce &&
+            typeof message.request.data === "object"
+          ) {
+            this.agents.set(message.request.data.id, socket);
             response = {
-              type:
-                requestMessage.request.type === RequestType.SendOffer
-                  ? ResponseType.SendOffer
-                  : ResponseType.SendAnswer,
+              type: ResponseType.Announce,
               data: null,
             };
-          } else {
-            console.error(
-              "Target agent",
-              requestMessage.request.data.data.receiver,
-              "not registered on server"
-            );
+          } else if (message.request.type === RequestType.GetAllAgents) {
+            const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
             response = {
-              type: ResponseType.Error,
-              data: "Target agent not registered on server",
+              type: ResponseType.GetAllAgents,
+              data: agents,
             };
+          } else if (
+            message.request.type === RequestType.SendOffer ||
+            message.request.type === RequestType.SendAnswer
+          ) {
+            const targetAgentWs = this.agents.get(
+              message.request.data.data.receiver
+            );
+            if (targetAgentWs) {
+              const signalingMessage: SignalingMessage = {
+                type: MessageType.Signaling,
+                signaling: message.request.data,
+              };
+              targetAgentWs.send(encodeSignalingMessage(signalingMessage));
+              response = {
+                type:
+                  message.request.type === RequestType.SendOffer
+                    ? ResponseType.SendOffer
+                    : ResponseType.SendAnswer,
+                data: null,
+              };
+            } else {
+              console.error(
+                "Target agent",
+                message.request.data.data.receiver,
+                "not registered on server"
+              );
+              response = {
+                type: ResponseType.Error,
+                data: "Target agent not registered on server",
+              };
+            }
+          } else {
+            console.error(`Unexpected request type: ${formatError(message)}`);
+            return;
           }
+          const responseMessage: ResponseMessage = {
+            type: MessageType.Response,
+            id: message.id,
+            response,
+          };
+          socket.send(encodeResponseMessage(responseMessage));
         } else {
-          console.error(
-            `Unexpected request type: ${formatError(requestMessage)}`
-          );
-          return;
         }
-        const responseMessage: ResponseMessage = {
-          id: requestMessage.id,
-          response,
-        };
-        socket.send(encodeResponseMessage(responseMessage));
       });
     });
   }

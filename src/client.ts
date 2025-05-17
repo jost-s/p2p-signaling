@@ -1,13 +1,18 @@
 import {
+  Signaling,
+  SignalingMessage,
+  SignalingType,
   Agent,
+  AgentId,
   Request,
   RequestMessage,
   RequestType,
   Response,
   ResponseMessage,
   ResponseType,
-} from "./types.js";
-import { decodeResponseMessage, encodeRequestMessage } from "./util.js";
+  MessageType,
+} from "./types/index.js";
+import { decodeMessage, encodeRequestMessage, formatError } from "./util.js";
 
 type RequestResolveFn = (value: Response) => void;
 type RequestRejectFn = (reason?: any) => void;
@@ -60,19 +65,20 @@ export class SignalingClient {
       return;
     }
 
-    console.log("Incoming response", responseMessage);
-    const pendingRequest = this.requests.get(responseMessage.id);
+    const message = decodeMessage(event.data);
+
+    if (message.type === MessageType.Response) {
+      console.log("Incoming response", message);
+      const pendingRequest = this.requests.get(message.id);
     if (pendingRequest) {
-      pendingRequest.resolve(responseMessage.response);
-      this.requests.delete(responseMessage.id);
+        pendingRequest.resolve(message.response);
+        this.requests.delete(message.id);
     } else {
       console.error(
-        `Received response to an unknown request: ${JSON.stringify(
-          responseMessage,
-          null,
-          4
-        )}`
+          `Received response to an unknown request: ${formatError(message)}`
       );
+      }
+    } else {
     }
   };
 
@@ -88,33 +94,25 @@ export class SignalingClient {
   }
 
   async announce(agent: Agent) {
-    const request: RequestMessage = {
-      id: this.requestIndex,
-      request: {
+    const request: Request = {
         type: RequestType.Announce,
         data: agent,
-      },
     };
-    this.requestIndex++;
     const response = await this.request(request);
     if (response.type === ResponseType.Announce && response.data === null) {
       return Promise.resolve(response.data);
     } else {
       return Promise.reject(
-        `Received unexpected response: ${JSON.stringify(response, null, 4)}`
+        `Received unexpected response: ${formatError(response)}`
       );
     }
   }
 
   async getAllAgents() {
-    const request: RequestMessage = {
-      id: this.requestIndex,
-      request: {
+    const request: Request = {
         type: RequestType.GetAllAgents,
         data: null,
-      },
     };
-    this.requestIndex++;
     const response = await this.request(request);
     if (
       response.type === ResponseType.GetAllAgents &&
