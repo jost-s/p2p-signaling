@@ -10,9 +10,9 @@ import {
   ResponseType,
 } from "../../src/types/index.js";
 import {
-  formatError,
   decodeMessage,
   encodeRequestMessage,
+  formatError,
 } from "../../src/util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
@@ -92,13 +92,13 @@ test("Agent can announce", async () => {
   });
 
   // Announce with ID returns a success message.
-  const agentId: AgentId = "peterhahne";
+  const agent: Agent = { id: "peterhahne", name: "" };
   const request: RequestMessage = {
     type: MessageType.Request,
     id: 0,
     request: {
       type: RequestType.Announce,
-      data: { id: agentId },
+      data: agent,
     },
   };
 
@@ -128,13 +128,13 @@ test("Get all agents", async () => {
   });
 
   // Announce one agent.
-  const agent1Id: AgentId = "peterhahne";
+  const agent = { id: "peterhahne", name: "" };
   const requestAnnounce: RequestMessage = {
     type: MessageType.Request,
     id: 0,
     request: {
       type: RequestType.Announce,
-      data: { id: agent1Id },
+      data: agent,
     },
   };
   await new Promise<void>((resolve) => {
@@ -165,7 +165,7 @@ test("Get all agents", async () => {
     });
     ws.send(encodeRequestMessage(requestGetAllAgents));
   });
-  assert.deepEqual(allAgents, [{ id: agent1Id }]);
+  assert.deepEqual(allAgents, [agent]);
 
   ws.close();
   await server.close();

@@ -2,12 +2,13 @@ import { IncomingMessage } from "http";
 import type WebSocket from "ws";
 import { WebSocketServer } from "ws";
 import {
+  Agent,
+  AgentId,
   Message,
   MessageType,
   RequestType,
   ResponseType,
   SignalingMessage,
-  type AgentId,
   type Response,
   type ResponseMessage,
 } from "./types/index.js";
@@ -20,7 +21,7 @@ import {
 
 export class SignalingServer {
   private readonly wss: WebSocketServer;
-  private agents: Map<AgentId, WebSocket>;
+  private agents: Map<AgentId, [Agent, WebSocket]>;
 
   private constructor(wss: WebSocketServer) {
     this.wss = wss;
@@ -57,13 +58,18 @@ export class SignalingServer {
             message.request.type === RequestType.Announce &&
             typeof message.request.data === "object"
           ) {
-            this.agents.set(message.request.data.id, socket);
+            this.agents.set(message.request.data.id, [
+              message.request.data,
+              socket,
+            ]);
             response = {
               type: ResponseType.Announce,
               data: null,
             };
           } else if (message.request.type === RequestType.GetAllAgents) {
-            const agents = Array.from(this.agents.keys()).map((id) => ({ id }));
+            const agents = Array.from(this.agents.values()).map(
+              (value) => value[0]
+            );
             response = {
               type: ResponseType.GetAllAgents,
               data: agents,
@@ -74,7 +80,7 @@ export class SignalingServer {
           ) {
             const targetAgentWs = this.agents.get(
               message.request.data.data.receiver
-            );
+            )?.[1];
             if (targetAgentWs) {
               const signalingMessage: SignalingMessage = {
                 type: MessageType.Signaling,

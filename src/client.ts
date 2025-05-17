@@ -30,16 +30,16 @@ export class SignalingClient {
   >;
   private readonly signalingListeners: Map<SignalingType, SignalingListener>;
 
-  private constructor(ws: WebSocket) {
+  private constructor(ws: WebSocket, agent: Agent) {
     this.webSocket = ws;
     this.webSocket.addEventListener("message", this.messageListener);
-    this.agent = { id: `agent-${Math.random()}` };
+    this.agent = agent;
     this.requestIndex = 0;
     this.requests = new Map();
     this.signalingListeners = new Map();
   }
 
-  static async connect(url: URL) {
+  static async connect(url: URL, agent: Agent) {
     return new Promise<SignalingClient>((resolve, reject) => {
       const webSocket = new WebSocket(url);
       const connectionErrorHandler = (event: Event) => {
@@ -52,7 +52,7 @@ export class SignalingClient {
           webSocket.removeEventListener("error", connectionErrorHandler);
 
           console.log("Signaling client connected to", webSocket.url);
-          const signalingClient = new SignalingClient(webSocket);
+          const signalingClient = new SignalingClient(webSocket, agent);
           resolve(signalingClient);
         },
         { once: true }
@@ -124,10 +124,10 @@ export class SignalingClient {
     });
   }
 
-  async announce(agent: Agent) {
+  async announce() {
     const request: Request = {
       type: RequestType.Announce,
-      data: agent,
+      data: this.agent,
     };
     const response = await this.request(request);
     if (response.type === ResponseType.Announce && response.data === null) {

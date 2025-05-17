@@ -2,6 +2,7 @@ import { assert, test } from "vitest";
 import { WebSocket } from "ws";
 import { SignalingServer } from "../../src/server.js";
 import {
+  Agent,
   AgentId,
   MessageType,
   RequestMessage,
@@ -16,7 +17,7 @@ const TEST_URL = new URL("ws://localhost:9000");
 test("RTC offer to unregistered agent fails", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const [agent] = await createAgents(1);
+  const [client] = await createClients(1);
   await new Promise<string>((resolve) => {
     const sendOfferMessage: RequestMessage = {
       type: MessageType.Request,
@@ -26,14 +27,14 @@ test("RTC offer to unregistered agent fails", async () => {
         data: {
           type: SignalingType.Offer,
           data: {
-            sender: agent.agentId,
+            sender: client.agent.id,
             receiver: "unregisteredAgent",
             offer: { type: "offer" },
           },
         },
       },
     };
-    agent.ws.once("message", (data) => {
+    client.ws.once("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
@@ -43,16 +44,16 @@ test("RTC offer to unregistered agent fails", async () => {
       );
       resolve(message.response.data);
     });
-    agent.ws.send(encodeRequestMessage(sendOfferMessage));
+    client.ws.send(encodeRequestMessage(sendOfferMessage));
   });
 
-  agent.ws.close();
+  client.ws.close();
   await server.close();
 });
 
 test("RTC offer is forwarded to target agent", async () => {
   const server = await SignalingServer.start(TEST_URL);
-  const [agent1, agent2] = await createAgents(2);
+  const [client1, client2] = await createClients(2);
 
   const offer: RTCSessionDescriptionInit = {
     type: "offer",
@@ -60,7 +61,7 @@ test("RTC offer is forwarded to target agent", async () => {
   };
 
   const offerReceived = new Promise((resolve) => {
-    agent2.ws.on("message", (data) => {
+    client2.ws.on("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Signaling);
       assert(message.signaling.type === SignalingType.Offer);
@@ -77,35 +78,35 @@ test("RTC offer is forwarded to target agent", async () => {
       data: {
         type: SignalingType.Offer,
         data: {
-          sender: agent1.agentId,
-          receiver: agent2.agentId,
+          sender: client1.agent.id,
+          receiver: client2.agent.id,
           offer,
         },
       },
     },
   };
   const offerRequestResponse = await new Promise<null>((resolve) => {
-    agent1.ws.once("message", (data) => {
+    client1.ws.once("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendOffer);
       resolve(message.response.data);
     });
-    agent1.ws.send(encodeRequestMessage(offerMessage));
+    client1.ws.send(encodeRequestMessage(offerMessage));
   });
   assert.equal(offerRequestResponse, null);
 
   await offerReceived;
 
-  agent1.ws.close();
-  agent2.ws.close();
+  client1.ws.close();
+  client2.ws.close();
   await server.close();
 });
 
 test("RTC answer to unregistered agent fails", async () => {
   const server = await SignalingServer.start(TEST_URL);
 
-  const [agent] = await createAgents(1);
+  const [client] = await createClients(1);
   await new Promise<string>((resolve) => {
     const sendAnswerMessage: RequestMessage = {
       type: MessageType.Request,
@@ -115,14 +116,14 @@ test("RTC answer to unregistered agent fails", async () => {
         data: {
           type: SignalingType.Answer,
           data: {
-            sender: agent.agentId,
+            sender: client.agent.id,
             receiver: "unregisteredAgent",
             answer: { type: "answer" },
           },
         },
       },
     };
-    agent.ws.once("message", (data) => {
+    client.ws.once("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
@@ -132,16 +133,16 @@ test("RTC answer to unregistered agent fails", async () => {
       );
       resolve(message.response.data);
     });
-    agent.ws.send(encodeRequestMessage(sendAnswerMessage));
+    client.ws.send(encodeRequestMessage(sendAnswerMessage));
   });
 
-  agent.ws.close();
+  client.ws.close();
   await server.close();
 });
 
 test("RTC answer is forwarded to target agent", async () => {
   const server = await SignalingServer.start(TEST_URL);
-  const [agent1, agent2] = await createAgents(2);
+  const [client1, client2] = await createClients(2);
 
   const answer: RTCSessionDescriptionInit = {
     type: "answer",
@@ -149,7 +150,7 @@ test("RTC answer is forwarded to target agent", async () => {
   };
 
   const answerReceived = new Promise((resolve) => {
-    agent2.ws.on("message", (data) => {
+    client2.ws.on("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Signaling);
       assert(message.signaling.type === SignalingType.Answer);
@@ -166,32 +167,32 @@ test("RTC answer is forwarded to target agent", async () => {
       data: {
         type: SignalingType.Answer,
         data: {
-          sender: agent1.agentId,
-          receiver: agent2.agentId,
+          sender: client1.agent.id,
+          receiver: client2.agent.id,
           answer,
         },
       },
     },
   };
   const answerRequestResponse = await new Promise<null>((resolve) => {
-    agent1.ws.once("message", (data) => {
+    client1.ws.once("message", (data) => {
       const message = decodeMessage(data);
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendAnswer);
       resolve(message.response.data);
     });
-    agent1.ws.send(encodeRequestMessage(answerMessage));
+    client1.ws.send(encodeRequestMessage(answerMessage));
   });
   assert.equal(answerRequestResponse, null);
 
   await answerReceived;
 
-  agent1.ws.close();
-  agent2.ws.close();
+  client1.ws.close();
+  client2.ws.close();
   await server.close();
 });
 
-const createAgents = async (
+const createClients = async (
   amount: number,
   announceAgent = true,
   server_url?: URL
@@ -207,7 +208,7 @@ const createAgents = async (
           resolve(ws);
         });
       });
-      const agentId: AgentId = `agent-${i}`;
+      const agent: Agent = { id: `agent-${i}`, name: "" };
 
       if (announceAgent) {
         // Announce agent.
@@ -216,7 +217,7 @@ const createAgents = async (
           id: 0,
           request: {
             type: RequestType.Announce,
-            data: { id: agentId },
+            data: agent,
           },
         };
         await new Promise<null>((resolve) => {
@@ -230,7 +231,7 @@ const createAgents = async (
         });
       }
 
-      return { ws, agentId };
+      return { ws, agent };
     })
   );
 };
