@@ -1,7 +1,7 @@
 import { assert, test } from "vitest";
 import { SignalingServer } from "../../src";
 import { SignalingClient } from "../../src/client";
-import { Agent } from "../../src/types";
+import { Agent, SignalingType } from "../../src/types";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -87,10 +87,21 @@ test("Client can receive an RTC offer", async () => {
   await client2.announce(client2.agent);
 
   const offer: RTCSessionDescriptionInit = { type: "offer" };
+
+  const offerReceived = new Promise((resolve) => {
+    client2.addSignalingListener(SignalingType.Offer, (signalingMessage) => {
+      assert(signalingMessage.signaling.type === SignalingType.Offer);
+      assert(signalingMessage.signaling.data.sender === client1.agent.id);
+      assert(signalingMessage.signaling.data.receiver === client2.agent.id);
+      assert.deepEqual(signalingMessage.signaling.data.offer, offer);
+      resolve(undefined);
+    });
+  });
+
   const response = await client1.sendOffer(client2.agent.id, offer);
   assert.equal(response, null);
 
-  // client2.
+  await offerReceived;
 
   await client1.close();
   await server.close();

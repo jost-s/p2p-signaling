@@ -22,4 +22,5 @@ export const decodeMessage = (message: RawData) => {
   }
   throw new Error(`Unknown message format: ${formatError(decodedMessage)}`);
 };
+
 export const formatError = (object: object) => JSON.stringify(object, null, 2);
