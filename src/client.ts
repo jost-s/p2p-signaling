@@ -99,13 +99,11 @@ export class SignalingClient {
   }
 
   private handleSignaling(message: SignalingMessage) {
-    if (message.signaling.type === SignalingType.Offer) {
-      const signalingOfferListener = this.signalingListeners.get(
-        SignalingType.Offer
-      );
-      if (signalingOfferListener) {
-        signalingOfferListener(message);
-      }
+    const signalingListener = this.signalingListeners.get(
+      message.signaling.type
+    );
+    if (signalingListener) {
+      signalingListener(message);
     }
   }
 
@@ -175,6 +173,26 @@ export class SignalingClient {
     };
     const response = await this.request(request);
     if (response.type === ResponseType.SendOffer && response.data === null) {
+      return Promise.resolve(response.data);
+    } else {
+      return Promise.reject("Received unexpected response");
+    }
+  }
+
+  async sendAnswer(receiver: AgentId, answer: RTCSessionDescriptionInit) {
+    const request: Request = {
+      type: RequestType.SendAnswer,
+      data: {
+        type: SignalingType.Answer,
+        data: {
+          sender: this.agent.id,
+          receiver,
+          answer,
+        },
+      },
+    };
+    const response = await this.request(request);
+    if (response.type === ResponseType.SendAnswer && response.data === null) {
       return Promise.resolve(response.data);
     } else {
       return Promise.reject("Received unexpected response");

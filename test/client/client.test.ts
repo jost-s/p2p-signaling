@@ -88,13 +88,13 @@ test("Client can receive an RTC offer", async () => {
 
   const offer: RTCSessionDescriptionInit = { type: "offer" };
 
-  const offerReceived = new Promise((resolve) => {
+  const offerReceived = new Promise<void>((resolve) => {
     client2.addSignalingListener(SignalingType.Offer, (signalingMessage) => {
       assert(signalingMessage.signaling.type === SignalingType.Offer);
       assert(signalingMessage.signaling.data.sender === client1.agent.id);
       assert(signalingMessage.signaling.data.receiver === client2.agent.id);
       assert.deepEqual(signalingMessage.signaling.data.offer, offer);
-      resolve(undefined);
+      resolve();
     });
   });
 
@@ -104,5 +104,49 @@ test("Client can receive an RTC offer", async () => {
   await offerReceived;
 
   await client1.close();
+  await client2.close();
+  await server.close();
+});
+
+test("Client can send an RTC answer", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const client = await SignalingClient.connect(TEST_URL);
+  const receiverId = "receiver";
+  await client.announce({ id: receiverId });
+
+  const answer: RTCSessionDescriptionInit = { type: "answer" };
+  const response = await client.sendAnswer(receiverId, answer);
+  assert.equal(response, null);
+
+  await client.close();
+  await server.close();
+});
+
+test.only("Client can receive an RTC answer", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const client1 = await SignalingClient.connect(TEST_URL);
+  await client1.announce(client1.agent);
+  const client2 = await SignalingClient.connect(TEST_URL);
+  await client2.announce(client2.agent);
+
+  const answer: RTCSessionDescriptionInit = { type: "answer" };
+
+  const answerReceived = new Promise<void>((resolve) => {
+    client2.addSignalingListener(SignalingType.Answer, (signalingMessage) => {
+      assert(signalingMessage.signaling.type === SignalingType.Answer);
+      assert(signalingMessage.signaling.data.sender === client1.agent.id);
+      assert(signalingMessage.signaling.data.receiver === client2.agent.id);
+      assert.deepEqual(signalingMessage.signaling.data.answer, answer);
+      resolve();
+    });
+  });
+
+  const response = await client1.sendAnswer(client2.agent.id, answer);
+  assert.equal(response, null);
+
+  await answerReceived;
+
+  await client1.close();
+  await client2.close();
   await server.close();
 });
