@@ -199,6 +199,29 @@ export class SignalingClient {
     }
   }
 
+  async sendIceCandidate(receiver: AgentId, iceCandidate: RTCIceCandidate) {
+    const request: Request = {
+      type: RequestType.SendIceCandidate,
+      data: {
+        type: SignalingType.IceCandidate,
+        data: {
+          sender: this.agent.id,
+          receiver,
+          iceCandidate,
+        },
+      },
+    };
+    const response = await this.request(request);
+    if (
+      response.type === ResponseType.SendIceCandidate &&
+      response.data === null
+    ) {
+      return Promise.resolve(response.data);
+    } else {
+      return Promise.reject("Received unexpected response");
+    }
+  }
+
   async close() {
     return new Promise<void>((resolve) => {
       this.webSocket.addEventListener(

@@ -54,10 +54,7 @@ export class SignalingServer {
           console.log("Incoming request", message);
 
           let response: Response;
-          if (
-            message.request.type === RequestType.Announce &&
-            typeof message.request.data === "object"
-          ) {
+          if (message.request.type === RequestType.Announce) {
             this.agents.set(message.request.data.id, [
               message.request.data,
               socket,
@@ -76,7 +73,8 @@ export class SignalingServer {
             };
           } else if (
             message.request.type === RequestType.SendOffer ||
-            message.request.type === RequestType.SendAnswer
+            message.request.type === RequestType.SendAnswer ||
+            message.request.type === RequestType.SendIceCandidate
           ) {
             const targetAgentWs = this.agents.get(
               message.request.data.data.receiver
@@ -87,11 +85,14 @@ export class SignalingServer {
                 signaling: message.request.data,
               };
               targetAgentWs.send(encodeSignalingMessage(signalingMessage));
+              const type =
+                message.request.type === RequestType.SendOffer
+                  ? ResponseType.SendOffer
+                  : message.request.type === RequestType.SendAnswer
+                  ? ResponseType.SendAnswer
+                  : ResponseType.SendIceCandidate;
               response = {
-                type:
-                  message.request.type === RequestType.SendOffer
-                    ? ResponseType.SendOffer
-                    : ResponseType.SendAnswer,
+                type,
                 data: null,
               };
             } else {
@@ -116,6 +117,11 @@ export class SignalingServer {
           };
           socket.send(encodeResponseMessage(responseMessage));
         } else {
+          const errorMessage = `Unexpected message type: ${formatError(
+            message
+          )}`;
+          console.error(errorMessage);
+          socket.send(errorMessage);
         }
       });
     });

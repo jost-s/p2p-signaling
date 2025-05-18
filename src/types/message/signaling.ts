@@ -6,7 +6,10 @@ export interface SignalingMessage {
   signaling: Signaling;
 }
 
-export type Signaling = SignalingOffer | SignalingAnswer;
+export type Signaling =
+  | SignalingOffer
+  | SignalingAnswer
+  | SignalingIceCandidate;
 
 export interface SignalingOffer {
   type: SignalingType.Offer;
@@ -18,9 +21,15 @@ export interface SignalingAnswer {
   data: RtcAnswer;
 }
 
+export interface SignalingIceCandidate {
+  type: SignalingType.IceCandidate;
+  data: RtcIceCandidate;
+}
+
 export enum SignalingType {
   Offer = "signaling_offer",
   Answer = "signaling_answer",
+  IceCandidate = "signaling_ice_candidate",
 }
 
 export interface RtcOffer {
@@ -33,4 +42,10 @@ export interface RtcAnswer {
   sender: AgentId;
   receiver: AgentId;
   answer: RTCSessionDescriptionInit;
+}
+
+export interface RtcIceCandidate {
+  sender: AgentId;
+  receiver: AgentId;
+  iceCandidate: RTCIceCandidate;
 }

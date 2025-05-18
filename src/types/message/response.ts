@@ -27,6 +27,11 @@ export interface ResponseSendAnswer {
   data: null;
 }
 
+export interface ResponseSendIceCandidate {
+  type: ResponseType.SendIceCandidate;
+  data: null;
+}
+
 export interface ResponseError {
   type: ResponseType.Error;
   data: string;
@@ -37,6 +42,7 @@ export enum ResponseType {
   GetAllAgents = "response_get_all_agents",
   SendOffer = "response_send_offer",
   SendAnswer = "response_send_answer",
+  SendIceCandidate = "response_send_ice_candidate",
   Error = "response_error",
 }
 
@@ -45,4 +51,5 @@ export type Response =
   | ResponseGetAllAgents
   | ResponseSendOffer
   | ResponseSendAnswer
+  | ResponseSendIceCandidate
   | ResponseError;

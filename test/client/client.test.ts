@@ -1,7 +1,8 @@
 import { assert, test } from "vitest";
-import { SignalingServer } from "../../src";
-import { SignalingClient } from "../../src/client";
-import { Agent, SignalingType } from "../../src/types";
+import { SignalingClient } from "../../src/client.js";
+import { SignalingServer } from "../../src/server.js";
+import { Agent, SignalingType } from "../../src/types/index.js";
+import { fakeIceCandidate } from "../util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 const TEST_AGENT: Agent = { id: "peterhahne", name: "" };
@@ -173,6 +174,78 @@ test("Client can receive an RTC answer", async () => {
   assert.equal(response, null);
 
   await answerReceived;
+
+  await client1.close();
+  await client2.close();
+  await server.close();
+});
+
+test("Client can send an RTC ICE candidate", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const client1 = await SignalingClient.connect(TEST_URL, {
+    id: "1",
+    name: "",
+  });
+  await client1.announce();
+  const client2 = await SignalingClient.connect(TEST_URL, {
+    id: "2",
+    name: "",
+  });
+  await client2.announce();
+
+  const iceCandidate = fakeIceCandidate();
+  const response = await client1.sendIceCandidate(
+    client2.agent.id,
+    iceCandidate
+  );
+  assert.equal(response, null);
+
+  await client1.close();
+  await client2.close();
+  await server.close();
+});
+
+test("Client can receive an RTC ICE candidate", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const client1 = await SignalingClient.connect(TEST_URL, {
+    id: "1",
+    name: "",
+  });
+  await client1.announce();
+  const client2 = await SignalingClient.connect(TEST_URL, {
+    id: "2",
+    name: "",
+  });
+  await client2.announce();
+
+  const iceCandidate = fakeIceCandidate();
+
+  const iceCandidateReceived = new Promise<void>((resolve) => {
+    client2.addSignalingListener(
+      SignalingType.IceCandidate,
+      (signalingMessage) => {
+        assert(signalingMessage.signaling.type === SignalingType.IceCandidate);
+        assert(signalingMessage.signaling.data.sender === client1.agent.id);
+        assert(signalingMessage.signaling.data.receiver === client2.agent.id);
+        // Cannot stringify/parse back the toJSON function.
+        const iceCandidateWithoutToJSONFn: any = iceCandidate;
+        delete iceCandidateWithoutToJSONFn.toJSON;
+        assert.deepEqual(
+          signalingMessage.signaling.data.iceCandidate,
+          iceCandidateWithoutToJSONFn
+        );
+        resolve();
+      }
+    );
+  });
+
+  const response = await client1.sendIceCandidate(
+    client2.agent.id,
+    iceCandidate
+  );
+  assert.equal(response, null);
+
+  await iceCandidateReceived;
 
   await client1.close();
   await client2.close();

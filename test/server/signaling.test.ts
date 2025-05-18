@@ -3,7 +3,6 @@ import { WebSocket } from "ws";
 import { SignalingServer } from "../../src/server.js";
 import {
   Agent,
-  AgentId,
   MessageType,
   RequestMessage,
   RequestType,
@@ -11,6 +10,7 @@ import {
   SignalingType,
 } from "../../src/types/index.js";
 import { decodeMessage, encodeRequestMessage } from "../../src/util.js";
+import { fakeIceCandidate } from "../util.js";
 
 const TEST_URL = new URL("ws://localhost:9000");
 
@@ -186,6 +186,100 @@ test("RTC answer is forwarded to target agent", async () => {
   assert.equal(answerRequestResponse, null);
 
   await answerReceived;
+
+  client1.ws.close();
+  client2.ws.close();
+  await server.close();
+});
+
+test("RTC ICE candidate to unregistered agent fails", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+
+  const [client] = await createClients(1);
+  await new Promise<string>((resolve) => {
+    const sendIceCandidateMessage: RequestMessage = {
+      type: MessageType.Request,
+      id: 0,
+      request: {
+        type: RequestType.SendIceCandidate,
+        data: {
+          type: SignalingType.IceCandidate,
+          data: {
+            sender: client.agent.id,
+            receiver: "unregisteredAgent",
+            iceCandidate: fakeIceCandidate(),
+          },
+        },
+      },
+    };
+    client.ws.once("message", (data) => {
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Error);
+      assert.equal(
+        message.response.data,
+        "Target agent not registered on server"
+      );
+      resolve(message.response.data);
+    });
+    client.ws.send(encodeRequestMessage(sendIceCandidateMessage));
+  });
+
+  client.ws.close();
+  await server.close();
+});
+
+test("RTC ICE candidate is forwarded to target agent", async () => {
+  const server = await SignalingServer.start(TEST_URL);
+  const [client1, client2] = await createClients(2);
+
+  const iceCandidate = fakeIceCandidate();
+
+  const iceCandidateReceived = new Promise((resolve) => {
+    client2.ws.on("message", (data) => {
+      const message = decodeMessage(data);
+      console.log("client2 received mesage", message);
+      assert(message.type === MessageType.Signaling);
+      assert(message.signaling.type === SignalingType.IceCandidate);
+      // Cannot stringify/parse back the toJSON function.
+      const iceCandidateWithoutToJSONFn: any = iceCandidate;
+      delete iceCandidateWithoutToJSONFn.toJSON;
+      assert.deepEqual(
+        message.signaling.data.iceCandidate,
+        iceCandidateWithoutToJSONFn
+      );
+      resolve(data);
+    });
+  });
+
+  const iceCandidateMessage: RequestMessage = {
+    type: MessageType.Request,
+    id: 1,
+    request: {
+      type: RequestType.SendIceCandidate,
+      data: {
+        type: SignalingType.IceCandidate,
+        data: {
+          sender: client1.agent.id,
+          receiver: client2.agent.id,
+          iceCandidate,
+        },
+      },
+    },
+  };
+  const answerRequestResponse = await new Promise<null>((resolve) => {
+    client1.ws.once("message", (data) => {
+      const message = decodeMessage(data);
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.SendIceCandidate);
+      resolve(message.response.data);
+      console.log("client1 sent");
+    });
+    client1.ws.send(encodeRequestMessage(iceCandidateMessage));
+  });
+  assert.equal(answerRequestResponse, null);
+
+  await iceCandidateReceived;
 
   client1.ws.close();
   client2.ws.close();
