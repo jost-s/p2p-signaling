@@ -1,17 +1,16 @@
 import {
-  Signaling,
-  SignalingMessage,
-  SignalingType,
   Agent,
   AgentId,
+  Message,
+  MessageType,
   Request,
   RequestMessage,
   RequestType,
   Response,
   ResponseMessage,
   ResponseType,
-  MessageType,
-  Message,
+  SignalingMessage,
+  SignalingType,
 } from "./types/index.js";
 import { decodeMessage, encodeRequestMessage, formatError } from "./util.js";
 

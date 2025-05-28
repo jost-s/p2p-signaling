@@ -35,7 +35,7 @@ test("RTC offer to unregistered agent fails", async () => {
       },
     };
     client.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
       assert.equal(
@@ -62,7 +62,7 @@ test("RTC offer is forwarded to target agent", async () => {
 
   const offerReceived = new Promise((resolve) => {
     client2.ws.on("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Signaling);
       assert(message.signaling.type === SignalingType.Offer);
       assert.deepEqual(message.signaling.data.offer, offer);
@@ -87,7 +87,7 @@ test("RTC offer is forwarded to target agent", async () => {
   };
   const offerRequestResponse = await new Promise<null>((resolve) => {
     client1.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendOffer);
       resolve(message.response.data);
@@ -124,7 +124,7 @@ test("RTC answer to unregistered agent fails", async () => {
       },
     };
     client.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
       assert.equal(
@@ -151,7 +151,7 @@ test("RTC answer is forwarded to target agent", async () => {
 
   const answerReceived = new Promise((resolve) => {
     client2.ws.on("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Signaling);
       assert(message.signaling.type === SignalingType.Answer);
       assert.deepEqual(message.signaling.data.answer, answer);
@@ -176,7 +176,7 @@ test("RTC answer is forwarded to target agent", async () => {
   };
   const answerRequestResponse = await new Promise<null>((resolve) => {
     client1.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendAnswer);
       resolve(message.response.data);
@@ -213,7 +213,7 @@ test("RTC ICE candidate to unregistered agent fails", async () => {
       },
     };
     client.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Error);
       assert.equal(
@@ -237,7 +237,7 @@ test("RTC ICE candidate is forwarded to target agent", async () => {
 
   const iceCandidateReceived = new Promise((resolve) => {
     client2.ws.on("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       console.log("client2 received mesage", message);
       assert(message.type === MessageType.Signaling);
       assert(message.signaling.type === SignalingType.IceCandidate);
@@ -269,7 +269,7 @@ test("RTC ICE candidate is forwarded to target agent", async () => {
   };
   const answerRequestResponse = await new Promise<null>((resolve) => {
     client1.ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.SendIceCandidate);
       resolve(message.response.data);
@@ -316,7 +316,7 @@ const createClients = async (
         };
         await new Promise<null>((resolve) => {
           ws.once("message", (data) => {
-            const message = decodeMessage(data);
+            const message = decodeMessage(data.toString());
             assert(message.type === MessageType.Response);
             assert(message.response.type === ResponseType.Announce);
             resolve(message.response.data);

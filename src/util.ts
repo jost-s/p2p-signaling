@@ -11,7 +11,7 @@ export const encodeResponseMessage = (message: ResponseMessage) =>
 export const encodeSignalingMessage = (message: SignalingMessage) =>
   JSON.stringify(message);
 
-export const decodeMessage = (message: RawData) => {
+export const decodeMessage = (message: string) => {
   const decodedMessage: Message = JSON.parse(message.toString());
   if (
     typeof decodedMessage === "object" &&
