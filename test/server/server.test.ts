@@ -70,7 +70,7 @@ test("Unknown message format does not crash server", async () => {
   };
   await new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.GetAllAgents);
       resolve(message.response.data);
@@ -104,7 +104,7 @@ test("Agent can announce", async () => {
 
   const response = await new Promise<null>((resolve) => {
     ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Announce);
       resolve(message.response.data);
@@ -139,7 +139,7 @@ test("Get all agents", async () => {
   };
   await new Promise<void>((resolve) => {
     ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.Announce);
       resolve();
@@ -158,7 +158,7 @@ test("Get all agents", async () => {
   };
   const allAgents = await new Promise<Agent[]>((resolve) => {
     ws.once("message", (data) => {
-      const message = decodeMessage(data);
+      const message = decodeMessage(data.toString());
       assert(message.type === MessageType.Response);
       assert(message.response.type === ResponseType.GetAllAgents);
       resolve(message.response.data);
