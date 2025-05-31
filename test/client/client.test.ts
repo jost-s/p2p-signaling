@@ -4,7 +4,11 @@ import { SignalingServer } from "../../src/server.js";
 import { Agent, SignalingType } from "../../src/types/index.js";
 import { fakeIceCandidate, getServerUrl } from "../util.js";
 
-const TEST_AGENT: Agent = { id: "peterhahne", name: "" };
+const TEST_AGENT: Agent = {
+  id: "peterhahne",
+  name: "",
+  expiry: Date.now() + 1000,
+};
 
 test("Client connection error is handled", async () => {
   try {
@@ -35,7 +39,11 @@ test("Client connection can be closed", async () => {
 test("Client can announce", async () => {
   const serverUrl = await getServerUrl();
   const server = await SignalingServer.start(serverUrl);
-  const agent: Agent = { id: "peterhahne", name: "" };
+  const agent: Agent = {
+    id: "peterhahne",
+    name: "",
+    expiry: Date.now() + 1000,
+  };
   const client = await SignalingClient.connect(serverUrl, agent);
 
   let allAgents = await client.getAllAgents();
@@ -74,11 +82,13 @@ test("Client can send an RTC offer", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 
@@ -97,11 +107,13 @@ test("Client can receive an RTC offer", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 
@@ -133,11 +145,13 @@ test("Client can send an RTC answer", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 
@@ -156,11 +170,13 @@ test("Client can receive an RTC answer", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 
@@ -192,11 +208,13 @@ test("Client can send an RTC ICE candidate", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 
@@ -218,11 +236,13 @@ test("Client can receive an RTC ICE candidate", async () => {
   const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client1.announce();
   const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
+    expiry: Date.now() + 1000,
   });
   await client2.announce();
 

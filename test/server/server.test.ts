@@ -14,6 +14,7 @@ import {
   formatError,
 } from "../../src/util.js";
 import { getServerUrl } from "../util.js";
+import { MAX_EXPIRY_MS } from "../../src/server.js";
 
 test("Server startup and shutdown", async () => {
   const serverUrl = await getServerUrl();
@@ -93,7 +94,11 @@ test("Agent can announce", async () => {
   });
 
   // Announce with ID returns a success message.
-  const agent: Agent = { id: "peterhahne", name: "" };
+  const agent: Agent = {
+    id: "peterhahne",
+    name: "",
+    expiry: Date.now() + 1000,
+  };
   const request: RequestMessage = {
     type: MessageType.Request,
     id: 0,
@@ -130,7 +135,11 @@ test("Get all agents", async () => {
   });
 
   // Announce one agent.
-  const agent = { id: "peterhahne", name: "" };
+  const agent: Agent = {
+    id: "peterhahne",
+    name: "",
+    expiry: Date.now() + 1000,
+  };
   const requestAnnounce: RequestMessage = {
     type: MessageType.Request,
     id: 0,
@@ -167,6 +176,141 @@ test("Get all agents", async () => {
     });
     ws.send(encodeRequestMessage(requestGetAllAgents));
   });
+  assert.deepEqual(allAgents, [agent]);
+
+  ws.close();
+  await server.close();
+});
+
+test("Announce with agent expiry greater than max is rejected", async () => {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+
+  const ws = await new Promise<WebSocket>((resolve) => {
+    const ws = new WebSocket(serverUrl);
+    ws.on("open", () => {
+      resolve(ws);
+    });
+  });
+
+  // Announce agent with excessive expiry.
+  const agent: Agent = {
+    id: "peterhahne",
+    name: "",
+    expiry: Date.now() + MAX_EXPIRY_MS + 10,
+  };
+  const requestAnnounce: RequestMessage = {
+    type: MessageType.Request,
+    id: 0,
+    request: {
+      type: RequestType.Announce,
+      data: agent,
+    },
+  };
+  await new Promise<void>((resolve) => {
+    ws.once("message", (data) => {
+      const message = decodeMessage(data.toString());
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Error);
+      resolve();
+    });
+    ws.send(encodeRequestMessage(requestAnnounce));
+  });
+
+  // Get all agents.
+  const requestGetAllAgents: RequestMessage = {
+    type: MessageType.Request,
+    id: 1,
+    request: {
+      type: RequestType.GetAllAgents,
+      data: null,
+    },
+  };
+  const allAgents = await new Promise<Agent[]>((resolve) => {
+    ws.once("message", (data) => {
+      const message = decodeMessage(data.toString());
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.GetAllAgents);
+      resolve(message.response.data);
+    });
+    ws.send(encodeRequestMessage(requestGetAllAgents));
+  });
+
+  // Agent should not have been registered.
+  assert.deepEqual(allAgents, []);
+
+  ws.close();
+  await server.close();
+});
+
+test("Expired agents are pruned", async () => {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+
+  const ws = await new Promise<WebSocket>((resolve) => {
+    const ws = new WebSocket(serverUrl);
+    ws.on("open", () => {
+      resolve(ws);
+    });
+  });
+
+  // Announce one expiring agent.
+  const expiringAgent: Agent = {
+    id: "peterhahne",
+    name: "",
+    expiry: Date.now(),
+  };
+  const requestAnnounce: RequestMessage = {
+    type: MessageType.Request,
+    id: 0,
+    request: {
+      type: RequestType.Announce,
+      data: expiringAgent,
+    },
+  };
+  await new Promise<void>((resolve) => {
+    ws.once("message", (data) => {
+      const message = decodeMessage(data.toString());
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Announce);
+      resolve();
+    });
+    ws.send(encodeRequestMessage(requestAnnounce));
+  });
+
+  // Announce one non-expiring agent.
+  const agent: Agent = { id: "klaus", name: "", expiry: Date.now() + 1000 };
+  requestAnnounce.request.data = agent;
+  await new Promise<void>((resolve) => {
+    ws.once("message", (data) => {
+      const message = decodeMessage(data.toString());
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.Announce);
+      resolve();
+    });
+    ws.send(encodeRequestMessage(requestAnnounce));
+  });
+
+  // Get all agents.
+  const requestGetAllAgents: RequestMessage = {
+    type: MessageType.Request,
+    id: 1,
+    request: {
+      type: RequestType.GetAllAgents,
+      data: null,
+    },
+  };
+  const allAgents = await new Promise<Agent[]>((resolve) => {
+    ws.once("message", (data) => {
+      const message = decodeMessage(data.toString());
+      assert(message.type === MessageType.Response);
+      assert(message.response.type === ResponseType.GetAllAgents);
+      resolve(message.response.data);
+    });
+    ws.send(encodeRequestMessage(requestGetAllAgents));
+  });
+
+  // Expiring agent should be gone and non-expiring agent should be present.
   assert.deepEqual(allAgents, [agent]);
 
   ws.close();
