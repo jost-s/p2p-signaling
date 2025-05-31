@@ -2,9 +2,8 @@ import { assert, test } from "vitest";
 import { SignalingClient } from "../../src/client.js";
 import { SignalingServer } from "../../src/server.js";
 import { Agent, SignalingType } from "../../src/types/index.js";
-import { fakeIceCandidate } from "../util.js";
+import { fakeIceCandidate, getServerUrl } from "../util.js";
 
-const TEST_URL = new URL("ws://localhost:9000");
 const TEST_AGENT: Agent = { id: "peterhahne", name: "" };
 
 test("Client connection error is handled", async () => {
@@ -17,8 +16,9 @@ test("Client connection error is handled", async () => {
 });
 
 test("Client connection can be closed", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client = await SignalingClient.connect(TEST_URL, TEST_AGENT);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client = await SignalingClient.connect(serverUrl, TEST_AGENT);
 
   await client.close();
 
@@ -33,9 +33,10 @@ test("Client connection can be closed", async () => {
 });
 
 test("Client can announce", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
   const agent: Agent = { id: "peterhahne", name: "" };
-  const client = await SignalingClient.connect(TEST_URL, agent);
+  const client = await SignalingClient.connect(serverUrl, agent);
 
   let allAgents = await client.getAllAgents();
   assert.deepEqual(allAgents, []);
@@ -50,8 +51,9 @@ test("Client can announce", async () => {
 });
 
 test("Client can send two requests in parallel", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client = await SignalingClient.connect(TEST_URL, TEST_AGENT);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client = await SignalingClient.connect(serverUrl, TEST_AGENT);
 
   const [announceResponse, getAllAgentsResponse] = await Promise.all([
     client.announce(),
@@ -67,13 +69,14 @@ test("Client can send two requests in parallel", async () => {
 });
 
 test("Client can send an RTC offer", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });
@@ -89,13 +92,14 @@ test("Client can send an RTC offer", async () => {
 });
 
 test("Client can receive an RTC offer", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });
@@ -124,13 +128,14 @@ test("Client can receive an RTC offer", async () => {
 });
 
 test("Client can send an RTC answer", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });
@@ -146,13 +151,14 @@ test("Client can send an RTC answer", async () => {
 });
 
 test("Client can receive an RTC answer", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });
@@ -181,13 +187,14 @@ test("Client can receive an RTC answer", async () => {
 });
 
 test("Client can send an RTC ICE candidate", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });
@@ -206,13 +213,14 @@ test("Client can send an RTC ICE candidate", async () => {
 });
 
 test("Client can receive an RTC ICE candidate", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const client1 = await SignalingClient.connect(TEST_URL, {
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const client1 = await SignalingClient.connect(serverUrl, {
     id: "1",
     name: "",
   });
   await client1.announce();
-  const client2 = await SignalingClient.connect(TEST_URL, {
+  const client2 = await SignalingClient.connect(serverUrl, {
     id: "2",
     name: "",
   });

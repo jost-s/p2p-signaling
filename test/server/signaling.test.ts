@@ -10,14 +10,13 @@ import {
   SignalingType,
 } from "../../src/types/index.js";
 import { decodeMessage, encodeRequestMessage } from "../../src/util.js";
-import { fakeIceCandidate } from "../util.js";
-
-const TEST_URL = new URL("ws://localhost:9000");
+import { fakeIceCandidate, getServerUrl } from "../util.js";
 
 test("RTC offer to unregistered agent fails", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
-  const [client] = await createClients(1);
+  const [client] = await createClients(1, serverUrl);
   await new Promise<string>((resolve) => {
     const sendOfferMessage: RequestMessage = {
       type: MessageType.Request,
@@ -52,8 +51,9 @@ test("RTC offer to unregistered agent fails", async () => {
 });
 
 test("RTC offer is forwarded to target agent", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const [client1, client2] = await createClients(2);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const [client1, client2] = await createClients(2, serverUrl);
 
   const offer: RTCSessionDescriptionInit = {
     type: "offer",
@@ -104,9 +104,10 @@ test("RTC offer is forwarded to target agent", async () => {
 });
 
 test("RTC answer to unregistered agent fails", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
-  const [client] = await createClients(1);
+  const [client] = await createClients(1, serverUrl);
   await new Promise<string>((resolve) => {
     const sendAnswerMessage: RequestMessage = {
       type: MessageType.Request,
@@ -141,8 +142,9 @@ test("RTC answer to unregistered agent fails", async () => {
 });
 
 test("RTC answer is forwarded to target agent", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const [client1, client2] = await createClients(2);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const [client1, client2] = await createClients(2, serverUrl);
 
   const answer: RTCSessionDescriptionInit = {
     type: "answer",
@@ -193,9 +195,10 @@ test("RTC answer is forwarded to target agent", async () => {
 });
 
 test("RTC ICE candidate to unregistered agent fails", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
-  const [client] = await createClients(1);
+  const [client] = await createClients(1, serverUrl);
   await new Promise<string>((resolve) => {
     const sendIceCandidateMessage: RequestMessage = {
       type: MessageType.Request,
@@ -230,8 +233,9 @@ test("RTC ICE candidate to unregistered agent fails", async () => {
 });
 
 test("RTC ICE candidate is forwarded to target agent", async () => {
-  const server = await SignalingServer.start(TEST_URL);
-  const [client1, client2] = await createClients(2);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
+  const [client1, client2] = await createClients(2, serverUrl);
 
   const iceCandidate = fakeIceCandidate();
 
@@ -288,11 +292,9 @@ test("RTC ICE candidate is forwarded to target agent", async () => {
 
 const createClients = async (
   amount: number,
-  announceAgent = true,
-  server_url?: URL
+  server_url: URL,
+  announceAgent = true
 ) => {
-  server_url = server_url ?? TEST_URL;
-
   return Promise.all(
     new Array(amount).fill(0).map(async (_, i) => {
       // Connect agent websocket.

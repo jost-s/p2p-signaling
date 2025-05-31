@@ -3,7 +3,6 @@ import { WebSocket } from "ws";
 import { SignalingServer } from "../../src/index.js";
 import {
   Agent,
-  AgentId,
   MessageType,
   RequestMessage,
   RequestType,
@@ -14,14 +13,14 @@ import {
   encodeRequestMessage,
   formatError,
 } from "../../src/util.js";
-
-const TEST_URL = new URL("ws://localhost:9000");
+import { getServerUrl } from "../util.js";
 
 test("Server startup and shutdown", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
   const ws = await new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(TEST_URL);
+    const ws = new WebSocket(serverUrl);
     ws.on("error", () => assert.fail());
     ws.on("open", () => resolve(ws));
   });
@@ -30,17 +29,18 @@ test("Server startup and shutdown", async () => {
   await server.close();
 
   await new Promise<void>((resolve) => {
-    const ws = new WebSocket(TEST_URL);
+    const ws = new WebSocket(serverUrl);
     ws.on("error", () => resolve());
     ws.on("open", () => assert.fail());
   });
 });
 
 test("Unknown message format does not crash server", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
   const ws = await new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(TEST_URL);
+    const ws = new WebSocket(serverUrl);
     ws.on("open", () => {
       resolve(ws);
     });
@@ -82,10 +82,11 @@ test("Unknown message format does not crash server", async () => {
 });
 
 test("Agent can announce", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
   const ws = await new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(TEST_URL);
+    const ws = new WebSocket(serverUrl);
     ws.on("open", () => {
       resolve(ws);
     });
@@ -118,10 +119,11 @@ test("Agent can announce", async () => {
 });
 
 test("Get all agents", async () => {
-  const server = await SignalingServer.start(TEST_URL);
+  const serverUrl = await getServerUrl();
+  const server = await SignalingServer.start(serverUrl);
 
   const ws = await new Promise<WebSocket>((resolve) => {
-    const ws = new WebSocket(TEST_URL);
+    const ws = new WebSocket(serverUrl);
     ws.on("open", () => {
       resolve(ws);
     });
