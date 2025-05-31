@@ -19,9 +19,13 @@ import {
   formatError,
 } from "./util.js";
 
+type AgentMap = Map<AgentId, [Agent, WebSocket]>;
+
+export const MAX_EXPIRY_MS = 1000 * 60 * 5;
+
 export class SignalingServer {
   private readonly wss: WebSocketServer;
-  private agents: Map<AgentId, [Agent, WebSocket]>;
+  private agents: AgentMap;
 
   static async start(url: URL) {
     return new Promise<SignalingServer>((resolve, reject) => {
@@ -77,9 +81,11 @@ export class SignalingServer {
 
 export const messageListenerForSocket = (
   socket: WebSocket,
-  agents: Map<AgentId, [Agent, WebSocket]>,
+  agents: AgentMap,
   data: WebSocket.RawData
 ) => {
+  pruneAgents(agents);
+
   let message: Message;
   try {
     message = decodeMessage(data.toString());
@@ -96,11 +102,18 @@ export const messageListenerForSocket = (
 
     let response: Response;
     if (message.request.type === RequestType.Announce) {
-      agents.set(message.request.data.id, [message.request.data, socket]);
-      response = {
-        type: ResponseType.Announce,
-        data: null,
-      };
+      if (message.request.data.expiry > Date.now() + MAX_EXPIRY_MS) {
+        response = {
+          type: ResponseType.Error,
+          data: `Maximum expiry of ${MAX_EXPIRY_MS} ms exceeded`,
+        };
+      } else {
+        agents.set(message.request.data.id, [message.request.data, socket]);
+        response = {
+          type: ResponseType.Announce,
+          data: null,
+        };
+      }
     } else if (message.request.type === RequestType.GetAllAgents) {
       const allAgents = Array.from(agents.values()).map((value) => value[0]);
       response = {
@@ -155,4 +168,12 @@ export const messageListenerForSocket = (
     console.error(errorMessage);
     socket.send(errorMessage);
   }
+};
+
+const pruneAgents = (agents: AgentMap) => {
+  agents.forEach((value, key, map) => {
+    if (value[0].expiry <= Date.now()) {
+      map.delete(key);
+    }
+  });
 };
