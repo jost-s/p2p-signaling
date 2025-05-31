@@ -1,3 +1,8 @@
+import getPort from "get-port";
+
+export const getServerUrl = async () =>
+  new URL(`ws://localhost:${await getPort()}`);
+
 export const fakeIceCandidate = (): RTCIceCandidate => ({
   address: null,
   candidate: "ice",

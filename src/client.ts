@@ -68,6 +68,7 @@ export class SignalingClient {
       message = decodeMessage(event.data);
     } catch (error) {
       console.error(error);
+      console.error(event.data);
       return;
     }
 
